@@ -3,6 +3,8 @@ import { db } from './firebase';
 import CryptoJS from 'crypto-js';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable'; // <-- IMPORT CORRETTO AUTOTABLE
 
 function Analisi({ utente }) {
     const [spese, setSpese] = useState([]);
@@ -15,26 +17,38 @@ function Analisi({ utente }) {
     const nomiMesiEstesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
     const COLORI = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+    // --- LOGICA DECRIPTAZIONE ---
     const decripta = (codice) => {
+        if (!codice) return "";
         try {
             const bytes = CryptoJS.AES.decrypt(codice, utente.uid);
-            const testoOriginale = bytes.toString(CryptoJS.enc.Utf8);
-            return testoOriginale || "0";
+            const testo = bytes.toString(CryptoJS.enc.Utf8);
+            return testo || "";
         // eslint-disable-next-line no-unused-vars
-        } catch (error) { return "0"; }
+        } catch (error) { return "Errore"; }
     };
 
+    // --- RIMOZIONE EMOJI PER PDF ---
+    const rimuoviEmoji = (stringa) => {
+        if (!stringa) return '';
+        return stringa.replace(/(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g, '').trim();
+    };
+
+    // --- CARICAMENTO DATI ---
     useEffect(() => {
         if (!utente) return;
 
+        // SCARICA E DECRIPTA LE SPESE
         const unsubS = onSnapshot(query(collection(db, 'spese'), where('utenteId', '==', utente.uid)), (snap) => {
             let docs = [];
             snap.forEach(d => {
                 const data = d.data();
                 docs.push({
+                    id: d.id,
                     ...data,
-                    importo: parseFloat(decripta(data.importo)),
+                    importo: parseFloat(decripta(data.importo)) || 0,
                     categoria: decripta(data.categoria),
+                    descrizione: decripta(data.descrizione), // ORA DECRIPTA LA DESCRIZIONE
                     frequenza: data.frequenza ? decripta(data.frequenza) : 'VARIABILE',
                     scadenza: data.scadenza ? decripta(data.scadenza) : ''
                 });
@@ -42,11 +56,18 @@ function Analisi({ utente }) {
             setSpese(docs);
         });
 
+        // SCARICA E DECRIPTA LE ENTRATE
         const unsubE = onSnapshot(query(collection(db, 'entrate'), where('utenteId', '==', utente.uid)), (snap) => {
             let docs = [];
             snap.forEach(d => {
                 const data = d.data();
-                docs.push({ ...data, importo: parseFloat(decripta(data.importo)) });
+                docs.push({ 
+                    id: d.id,
+                    ...data, 
+                    importo: parseFloat(decripta(data.importo)) || 0,
+                    categoria: decripta(data.categoria),     // ORA DECRIPTA LA CATEGORIA
+                    descrizione: decripta(data.descrizione)  // ORA DECRIPTA LA DESCRIZIONE
+                });
             });
             setEntrate(docs);
         });
@@ -54,7 +75,8 @@ function Analisi({ utente }) {
         return () => { unsubS(); unsubE(); };
     }, [utente]);
 
-    const filtraDati = (lista, m, a) => lista.filter(item => {
+    // --- LOGICA FILTRI ---
+    const filtraDati = (lista, m, a, soloAnno = false) => lista.filter(item => {
         const dataItem = item.dataInserimento?.toDate() || new Date();
         const meseItem = dataItem.getMonth();
         const annoItem = dataItem.getFullYear();
@@ -62,14 +84,16 @@ function Analisi({ utente }) {
         const annoTarget = parseInt(a);
 
         if (item.frequenza === 'FISSA') {
-            const iniziata = (annoItem < annoTarget) || (annoItem === annoTarget && meseItem <= meseTarget);
+            const iniziata = soloAnno ? (annoItem <= annoTarget) : ((annoItem < annoTarget) || (annoItem === annoTarget && meseItem <= meseTarget));
             let nonScaduta = true;
             if (item.scadenza) {
                 const dFine = new Date(item.scadenza);
-                nonScaduta = (annoTarget < dFine.getFullYear()) || (annoTarget === dFine.getFullYear() && meseTarget <= dFine.getMonth());
+                nonScaduta = soloAnno ? (annoTarget <= dFine.getFullYear()) : ((annoTarget < dFine.getFullYear()) || (annoTarget === dFine.getFullYear() && meseTarget <= dFine.getMonth()));
             }
             return iniziata && nonScaduta;
         }
+        
+        if (soloAnno) return annoItem === annoTarget;
         return meseItem === meseTarget && annoItem === annoTarget;
     });
 
@@ -94,32 +118,161 @@ function Analisi({ utente }) {
         return acc;
     }, {})).map(([name, value]) => ({ name, value }));
 
-    return (
-        <div className="animate-fade-in pb-20 w-full">
-            
-            {/* BANNER PRIVACY DISCRETO */}
-            <div className="flex justify-center mb-6">
-                <span className="flex items-center gap-1.5 text-[10px] bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)]">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"></path></svg>
-                    Criptazione End-to-End
-                </span>
-            </div>
+    // --- FUNZIONE GENERAZIONE PDF PREMIUM ---
+    const generaPDF = (tipoReport) => {
+        const doc = new jsPDF();
+        const isAnnuale = tipoReport === 'ANNO';
+        
+        const speseExport = filtraDati(spese, meseSelezionato, annoSelezionato, isAnnuale);
+        const entrateExport = filtraDati(entrate, meseSelezionato, annoSelezionato, isAnnuale);
 
-            {/* HEADER (GLASSMORPHISM) */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
+        const totaleE = entrateExport.reduce((a, b) => a + b.importo, 0);
+        const totaleU = speseExport.reduce((a, b) => a + b.importo, 0);
+        const netto = totaleE - totaleU;
+
+        // 1. Intestazione Scura
+        doc.setFillColor(15, 23, 42); 
+        doc.rect(0, 0, 210, 40, 'F'); 
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.text("TRACKER SPESE", 14, 20);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(148, 163, 184); 
+        const periodo = isAnnuale ? `Report Annuale: ${annoSelezionato}` : `Report Mensile: ${nomiMesiEstesi[meseSelezionato]} ${annoSelezionato}`;
+        doc.text(periodo, 14, 28);
+
+        // 2. Sezione Riepilogo Totali
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text("Riepilogo Finanziario", 14, 52);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+
+        doc.text("Entrate Totali:", 14, 62);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(16, 185, 129); 
+        doc.text(`+ € ${totaleE.toFixed(2)}`, 14, 68);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text("Uscite Totali:", 75, 62);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(239, 68, 68); 
+        doc.text(`- € ${totaleU.toFixed(2)}`, 75, 68);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text("Risparmio Netto:", 135, 62);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(netto >= 0 ? 16 : 239, netto >= 0 ? 185 : 68, netto >= 0 ? 129 : 68);
+        doc.text(`€ ${netto.toFixed(2)}`, 135, 68);
+
+        doc.setDrawColor(226, 232, 240); 
+        doc.line(14, 76, 196, 76);
+
+        // 3. Preparazione Dati Tabella (con stringhe decriptate e pulite)
+        const tuttiIMovimenti = [
+            ...speseExport.map(s => ({ ...s, tipo: 'Uscita' })),
+            ...entrateExport.map(e => ({ ...e, tipo: 'Entrata', frequenza: 'SINGOLA' }))
+        ].sort((a, b) => b.dataInserimento?.toDate() - a.dataInserimento?.toDate());
+
+        const colonneTabella = ["Data", "Tipo", "Categoria", "Descrizione", "Freq.", "Importo"];
+        const righeTabella = tuttiIMovimenti.map(m => [
+            m.dataInserimento?.toDate().toLocaleDateString('it-IT') || '',
+            m.tipo,
+            rimuoviEmoji(m.categoria),
+            rimuoviEmoji(m.descrizione),
+            m.frequenza === 'VARIABILE' || m.frequenza === 'SINGOLA' ? 'Var.' : 'Fissa',
+            `€ ${m.importo.toFixed(2)}`
+        ]);
+
+        // 4. Tabella Automatica
+        autoTable(doc, {
+            startY: 84,
+            head: [colonneTabella],
+            body: righeTabella,
+            theme: 'striped',
+            headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            alternateRowStyles: { fillColor: [248, 250, 252] }, 
+            styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [51, 65, 85] },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 26 }, 
+                1: { halign: 'center', cellWidth: 22 }, 
+                2: { cellWidth: 35 }, 
+                3: { cellWidth: 'auto' }, 
+                4: { halign: 'center', cellWidth: 18 }, // <-- ALLARGATO PER NON ANDARE A CAPO
+                5: { halign: 'right', fontStyle: 'bold', cellWidth: 25 } 
+            },
+            didParseCell: function(data) {
+                if (data.section === 'body' && data.column.index === 5) {
+                    if (data.row.raw[1] === 'Entrata') {
+                        data.cell.styles.textColor = [16, 185, 129];
+                    } else {
+                        data.cell.styles.textColor = [239, 68, 68];
+                    }
+                }
+            }
+        });
+
+        // 5. Piè di pagina
+        const pageCount = doc.internal.getNumberOfPages();
+        for(let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(148, 163, 184); 
+            doc.text(
+                `Generato da TrackerSpese il ${new Date().toLocaleDateString('it-IT')} - Pagina ${i} di ${pageCount}`, 
+                14, 
+                285 
+            );
+        }
+
+        // 6. Download
+        const nomeFile = isAnnuale 
+            ? `Report_TrackerSpese_${annoSelezionato}.pdf` 
+            : `Report_TrackerSpese_${nomiMesiEstesi[meseSelezionato]}_${annoSelezionato}.pdf`;
+            
+        doc.save(nomeFile);
+    };
+
+    return (
+        <div className="animate-fade-in pb-20 w-full max-w-7xl mx-auto">
+            
+            {/* HEADER CON BOTTONI PDF */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
                 <div>
                     <h2 className="text-2xl font-black text-slate-100 tracking-tight">Analisi Finanziaria</h2>
-                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Statistiche e Proiezioni</p>
+                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Esporta in PDF</p>
                 </div>
 
-                <div className="flex gap-2 bg-slate-950/50 p-2 rounded-2xl border border-slate-800/50 w-full md:w-auto">
-                    <select value={meseSelezionato} onChange={(e) => setMeseSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 appearance-none text-center">
-                        {nomiMesiEstesi.map((m, i) => <option key={i} value={i} className="bg-slate-900">{m}</option>)}
-                    </select>
-                    <div className="w-[1px] bg-slate-800 my-1"></div>
-                    <select value={annoSelezionato} onChange={(e) => setAnnoSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 appearance-none text-center">
-                        {[2024, 2025, 2026].map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
-                    </select>
+                <div className="flex flex-col md:flex-row gap-4 items-center w-full lg:w-auto">
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <button onClick={() => generaPDF('MESE')} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold uppercase tracking-widest py-3 px-5 rounded-xl border border-rose-500/20 transition-all active:scale-95 shadow-lg group">
+                            <span className="text-lg group-hover:-translate-y-0.5 transition-transform">📕</span> Mese
+                        </button>
+                        <button onClick={() => generaPDF('ANNO')} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-widest py-3 px-5 rounded-xl border border-blue-500/20 transition-all active:scale-95 shadow-lg group">
+                            <span className="text-lg group-hover:-translate-y-0.5 transition-transform">📘</span> Anno
+                        </button>
+                    </div>
+
+                    <div className="hidden md:block w-[1px] h-8 bg-slate-800 mx-2"></div>
+
+                    <div className="flex gap-2 bg-slate-950/50 p-2 rounded-2xl border border-slate-800/50 w-full md:w-auto">
+                        <select value={meseSelezionato} onChange={(e) => setMeseSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 appearance-none text-center">
+                            {nomiMesiEstesi.map((m, i) => <option key={i} value={i} className="bg-slate-900">{m}</option>)}
+                        </select>
+                        <div className="w-[1px] bg-slate-800 my-1"></div>
+                        <select value={annoSelezionato} onChange={(e) => setAnnoSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 appearance-none text-center">
+                            {[2024, 2025, 2026].map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 

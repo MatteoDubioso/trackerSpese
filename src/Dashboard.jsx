@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from './firebase';
-import CryptoJS from 'crypto-js'; 
+import CryptoJS from 'crypto-js';
 import {
     collection, addDoc, query, where, orderBy,
     onSnapshot, doc, deleteDoc, Timestamp, updateDoc
@@ -9,20 +9,20 @@ import {
 function Dashboard({ utente }) {
     // --- STATI FORM ---
     const [tipo, setTipo] = useState('USCITA');
-    const [frequenza, setFrequenza] = useState('VARIABILE'); 
+    const [frequenza, setFrequenza] = useState('VARIABILE');
     const [importo, setImporto] = useState('');
     const [descrizione, setDescrizione] = useState('');
     const [categoria, setCategoria] = useState('🍕 Cibo');
     const [categoriaPersonalizzata, setCategoriaPersonalizzata] = useState('');
     const [emojiSelezionata, setEmojiSelezionata] = useState('📌');
     const [dataSpesa, setDataSpesa] = useState(new Date().toISOString().split('T')[0]);
-    const [dataFine, setDataFine] = useState(''); 
+    const [dataFine, setDataFine] = useState('');
     const [caricamento, setCaricamento] = useState(false);
 
     // --- STATI DATI ---
     const [spese, setSpese] = useState([]);
     const [entrate, setEntrate] = useState([]);
-    const [spesaInModifica, setSpesaInModifica] = useState(null); 
+    const [spesaInModifica, setSpesaInModifica] = useState(null);
     const [meseSelezionato, setMeseSelezionato] = useState(new Date().getMonth());
     const [annoSelezionato, setAnnoSelezionato] = useState(new Date().getFullYear());
 
@@ -36,8 +36,8 @@ function Dashboard({ utente }) {
         try {
             const bytes = CryptoJS.AES.decrypt(codice, utente.uid);
             const testo = bytes.toString(CryptoJS.enc.Utf8);
-            return testo || ""; 
-        // eslint-disable-next-line no-unused-vars
+            return testo || "";
+            // eslint-disable-next-line no-unused-vars
         } catch (e) { return "Errore"; }
     };
 
@@ -55,8 +55,8 @@ function Dashboard({ utente }) {
             const array = [];
             snapshot.forEach((d) => {
                 const data = d.data();
-                array.push({ 
-                    id: d.id, 
+                array.push({
+                    id: d.id,
                     ...data,
                     importo: parseFloat(decripta(data.importo)),
                     descrizione: decripta(data.descrizione),
@@ -72,8 +72,8 @@ function Dashboard({ utente }) {
             const array = [];
             snapshot.forEach((d) => {
                 const data = d.data();
-                array.push({ 
-                    id: d.id, 
+                array.push({
+                    id: d.id,
                     ...data,
                     importo: parseFloat(decripta(data.importo)),
                     descrizione: decripta(data.descrizione),
@@ -145,7 +145,7 @@ function Dashboard({ utente }) {
 
     return (
         <div className="animate-fade-in pb-20 w-full">
-            
+
             {/* BANNER PRIVACY DISCRETO */}
             <div className="flex justify-center mb-6">
                 <span className="flex items-center gap-1.5 text-[10px] bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)]">
@@ -156,7 +156,7 @@ function Dashboard({ utente }) {
 
             {/* HEADER TOTALI (GLASSMORPHISM) */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
-                
+
                 {/* SELETTORE DATA */}
                 <div className="flex flex-col gap-2 w-full lg:w-auto">
                     <p className="text-[10px] text-slate-500 font-bold uppercase ml-2 tracking-widest">Seleziona Periodo</p>
@@ -170,7 +170,7 @@ function Dashboard({ utente }) {
                         </select>
                     </div>
                 </div>
-                
+
                 {/* TOTALI */}
                 <div className="flex w-full lg:w-auto gap-4 md:gap-8 justify-between lg:justify-end items-center">
                     <div className="hidden sm:block text-right">
@@ -182,7 +182,7 @@ function Dashboard({ utente }) {
                         <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Uscite</p>
                         <h2 className="text-xl font-bold text-red-400/90 tracking-tight">€ {totaleSpese.toFixed(2)}</h2>
                     </div>
-                    
+
                     {/* RISPARMIO NETTO EVIDENZIATO */}
                     <div className="bg-slate-950 p-4 rounded-2xl px-6 border border-slate-800/50 shadow-inner flex flex-col justify-center min-w-[140px] text-right">
                         <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Risparmio Netto</p>
@@ -194,7 +194,7 @@ function Dashboard({ utente }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-                
+
                 {/* COLONNA FORM (STICKY) */}
                 <div className="lg:col-span-5 lg:sticky lg:top-28">
                     <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
@@ -211,7 +211,7 @@ function Dashboard({ utente }) {
                         </div>
 
                         <form onSubmit={salvaSpesa} className="flex flex-col gap-5">
-                            
+
                             {/* DATE */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
@@ -252,7 +252,7 @@ function Dashboard({ utente }) {
                                         {tutteLeCategorie.map(c => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
                                         <option value="CREA_NUOVA" className="font-bold text-emerald-400 bg-slate-900">➕ Nuova Categoria...</option>
                                     </select>
-                                    
+
                                     {/* EMOJI PICKER */}
                                     {categoria === 'CREA_NUOVA' && (
                                         <div className="p-5 bg-slate-950/50 rounded-2xl ring-1 ring-emerald-500/30 space-y-4 animate-fade-in shadow-inner">
@@ -272,7 +272,7 @@ function Dashboard({ utente }) {
                             <button type="submit" disabled={caricamento} className={`mt-4 w-full py-4 rounded-2xl font-bold tracking-widest text-sm transition-all shadow-lg active:scale-[0.98] ${tipo === 'ENTRATA' ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-emerald-500/20' : 'bg-slate-200 text-slate-900 hover:bg-white shadow-white/10'}`}>
                                 {caricamento ? 'ELABORAZIONE...' : (spesaInModifica ? 'AGGIORNA MOVIMENTO' : 'SALVA MOVIMENTO')}
                             </button>
-                            
+
                             {/* ANNULLA MODIFICA */}
                             {spesaInModifica && (
                                 <button type="button" onClick={() => { setSpesaInModifica(null); setImporto(''); setDescrizione(''); setCategoria('🍕 Cibo'); setDataFine(''); }} className="py-2 text-xs font-bold tracking-widest uppercase text-slate-500 hover:text-slate-300 transition-colors">
@@ -291,9 +291,9 @@ function Dashboard({ utente }) {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        {[...speseFiltrate, ...entrateFiltrate].sort((a,b) => b.dataInserimento?.toDate() - a.dataInserimento?.toDate()).map(s => (
+                        {[...speseFiltrate, ...entrateFiltrate].sort((a, b) => b.dataInserimento?.toDate() - a.dataInserimento?.toDate()).map(s => (
                             <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/40 rounded-[1.5rem] border border-slate-800/60 group hover:border-slate-700 hover:bg-slate-900/60 transition-all backdrop-blur-sm shadow-sm">
-                                
+
                                 <div className="flex items-center gap-4">
                                     <div className="w-14 h-14 flex items-center justify-center bg-slate-950 rounded-[1.2rem] text-2xl border border-slate-800/50 shadow-inner group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300">
                                         {ottieniEmoji(s.categoria)}
@@ -303,13 +303,13 @@ function Dashboard({ utente }) {
                                         <div className="flex flex-wrap items-center gap-1.5 text-[9px] sm:text-[10px] font-bold tracking-widest uppercase">
                                             <span className="text-slate-500">{s.categoria}</span>
                                             <span className="text-slate-700">•</span>
-                                            <span className="text-slate-400">{s.dataInserimento?.toDate().toLocaleDateString('it-IT', {day: '2-digit', month: 'short'})}</span>
-                                            
+                                            <span className="text-slate-400">{s.dataInserimento?.toDate().toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span>
+
                                             {s.frequenza === 'FISSA' && (
                                                 <>
                                                     <span className="text-slate-700 hidden sm:inline">•</span>
                                                     <span className="text-blue-400/80 bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20">
-                                                        {s.scadenza ? `Fino al ${new Date(s.scadenza).toLocaleDateString('it-IT', {month:'short', year:'2-digit'})}` : '📌 Fissa'}
+                                                        {s.scadenza ? `Fino al ${new Date(s.scadenza).toLocaleDateString('it-IT', { month: 'short', year: '2-digit' })}` : '📌 Fissa'}
                                                     </span>
                                                 </>
                                             )}
@@ -318,10 +318,10 @@ function Dashboard({ utente }) {
                                 </div>
 
                                 <div className="flex items-center gap-2 sm:gap-4">
-                                    <span className={`font-black text-base sm:text-lg tracking-tight ${s.categoria === '💰 Entrata' ? 'text-emerald-400' : 'text-slate-200'}`}>
-                                        {s.categoria === '💰 Entrata' ? '+' : '-'}€{s.importo.toFixed(2)}
+                                    <span className={`whitespace-nowrap font-black text-base sm:text-lg tracking-tight ${s.categoria === '💰 Entrata' ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                        {s.categoria === '💰 Entrata' ? '+ ' : '- '}€{s.importo.toFixed(2)}
                                     </span>
-                                    
+
                                     {/* AZIONI (Modifica / Elimina) */}
                                     <div className="flex bg-slate-950 border border-slate-800 rounded-xl overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
                                         <button onClick={() => {
@@ -344,7 +344,7 @@ function Dashboard({ utente }) {
 
                             </div>
                         ))}
-                        
+
                         {(speseFiltrate.length + entrateFiltrate.length) === 0 && (
                             <div className="flex flex-col items-center justify-center py-24 px-4 bg-slate-900/20 rounded-[2rem] border border-dashed border-slate-800 text-center">
                                 <span className="text-4xl mb-4 opacity-50">🍃</span>
