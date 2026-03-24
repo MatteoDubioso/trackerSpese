@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+/* ─── Fonts ───────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+/* ─── Design Tokens PRO ───────────────────────────────── */
+:root {
+  /* 🎨 COLORS (più profondi) */
+  --color-text:            #6b6375;
+  --color-text-heading:    #0a0910;
+  --color-text-muted:      #9a94a3;
+
+  --color-bg:              #ffffff;
+  --color-bg-subtle:       #faf9fc;
+
+  --color-border:          #e5e4e7;
+  --color-border-subtle:   #f1f0f3;
+
+  --color-code-bg:         #f4f3ec;
+
+  /* 🔥 ACCENT (più premium) */
+  --color-accent:          #a855f7;
+  --color-accent-hover:    #9333ea;
+  --color-accent-bg:       rgba(168, 85, 247, 0.08);
+  --color-accent-border:   rgba(168, 85, 247, 0.35);
+
+  /* 💎 GLASS */
+  --glass-bg: rgba(255,255,255,0.6);
+  --glass-border: rgba(0,0,0,0.06);
+
+  /* 🌑 SHADOW (soft modern) */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow:    0 8px 20px rgba(0,0,0,0.08);
+  --shadow-lg: 0 20px 50px rgba(0,0,0,0.12);
+
+  /* 🔤 Typography */
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  /* 📐 Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+
+  /* ⚡ Motion */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration: 220ms;
+
+  font-family: var(--font-sans);
+  font-size: clamp(15px, 1vw + 0.4rem, 18px);
+  line-height: 1.7;
+
+  color: var(--color-text);
+  background: var(--color-bg);
+
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── DARK MODE PRO ───────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text:           #9ca3af;
+    --color-text-heading:   #f9fafb;
+    --color-text-muted:     #6b7280;
+
+    --color-bg:             #0f1117;
+    --color-bg-subtle:      #151720;
+
+    --color-border:         #2a2d37;
+    --color-border-subtle:  #1f212b;
+
+    --color-code-bg:        #1c1f28;
+
+    --color-accent:         #c084fc;
+    --color-accent-hover:   #d8b4fe;
+    --color-accent-bg:      rgba(192, 132, 252, 0.12);
+    --color-accent-border:  rgba(192, 132, 252, 0.4);
+
+    --glass-bg: rgba(255,255,255,0.04);
+    --glass-border: rgba(255,255,255,0.08);
+  }
+}
+
+/* ─── RESET ───────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  transition: all var(--duration) var(--ease);
+}
+
+/* ─── LAYOUT ──────────────────────────────────────────── */
+#root {
+  max-width: 1120px;
+  margin-inline: auto;
+  min-height: 100svh;
+
+  display: flex;
+  flex-direction: column;
+
+  border-inline: 1px solid var(--color-border);
+
+  /* ✨ glass layer */
+  background: linear-gradient(
+    180deg,
+    var(--color-bg) 0%,
+    var(--color-bg-subtle) 100%
+  );
+
+  animation: fade-up 0.5s var(--ease);
+}
+
+/* ─── ANIMAZIONE MIGLIORATA ───────────────────────────── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─── TYPOGRAPHY PRO ──────────────────────────────────── */
+h1, h2, h3 {
+  color: var(--color-text-heading);
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  font-weight: 600;
+  margin-block: 32px;
+}
+
+h2 {
+  font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+h3 {
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+p {
+  margin: 0;
+  color: var(--color-text);
+}
+
+/* ─── LINKS PRO ───────────────────────────────────────── */
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  position: relative;
+  transition: color var(--duration) var(--ease);
+}
+
+a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0%;
+  height: 1px;
+  background: var(--color-accent);
+  transition: width var(--duration) var(--ease);
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+a:hover::after {
+  width: 100%;
+}
+
+/* ─── CODE BLOCK PRO ──────────────────────────────────── */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 3px 8px;
+
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+
+  color: var(--color-text-heading);
+
+  transition: all var(--duration) var(--ease);
+}
+
+code:hover {
+  box-shadow: var(--shadow-sm);
+}

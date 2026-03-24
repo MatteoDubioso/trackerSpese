@@ -1,0 +1,279 @@
+/* =========================
+   ROOT DESIGN TOKENS
+========================= */
+:root {
+  --radius: 14px;
+  --radius-sm: 10px;
+
+  --transition-fast: 0.2s ease;
+  --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.15);
+  --shadow-hover: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* =========================
+   COUNTER (GLASS CHIP)
+========================= */
+.counter {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+
+  color: var(--accent);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  transition: var(--transition-smooth);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
+    border-color: var(--accent-border);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+}
+
+/* =========================
+   HERO (3D + GLOW)
+========================= */
+.hero {
+  position: relative;
+  perspective: 1200px;
+
+  .base {
+    width: 170px;
+    margin: 0 auto;
+    filter: drop-shadow(0 20px 40px rgba(0,0,0,0.4));
+  }
+
+  .framework,
+  .vite {
+    position: absolute;
+    inset-inline: 0;
+    margin: 0 auto;
+    transition: transform var(--transition-smooth);
+    will-change: transform;
+  }
+
+  .framework {
+    top: 34px;
+    height: 28px;
+    transform: rotateZ(300deg) rotateX(44deg) rotateY(39deg) scale(1.4);
+  }
+
+  .vite {
+    top: 107px;
+    height: 26px;
+    transform: rotateZ(300deg) rotateX(40deg) rotateY(39deg) scale(0.8);
+    opacity: 0.85;
+  }
+
+  &:hover .framework {
+    transform: rotateZ(300deg) rotateX(44deg) rotateY(39deg) scale(1.55);
+  }
+
+  &:hover .vite {
+    transform: rotateZ(300deg) rotateX(40deg) rotateY(39deg) scale(0.95);
+  }
+}
+
+/* =========================
+   CENTER LAYOUT
+========================= */
+#center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 28px;
+  flex-grow: 1;
+  text-align: center;
+
+  @media (max-width: 1024px) {
+    padding: 24px 16px;
+    gap: 18px;
+  }
+}
+
+/* =========================
+   NEXT STEPS (CARD GRID)
+========================= */
+#next-steps {
+  display: flex;
+  border-top: 1px solid var(--border);
+
+  & > div {
+    flex: 1;
+    padding: 36px;
+
+    background: transparent;
+    transition: var(--transition-smooth);
+    position: relative;
+
+    &:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      opacity: 0;
+      transition: var(--transition-smooth);
+    }
+
+    &:hover::after {
+      opacity: 1;
+      box-shadow: var(--shadow-soft);
+    }
+
+    @media (max-width: 1024px) {
+      padding: 24px 18px;
+    }
+  }
+
+  .icon {
+    margin-bottom: 12px;
+    width: 22px;
+    height: 22px;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* =========================
+   DOCS
+========================= */
+#docs {
+  border-right: 1px solid var(--border);
+
+  @media (max-width: 1024px) {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* =========================
+   SOCIAL BUTTONS (PREMIUM)
+========================= */
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+
+  a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+
+    color: var(--text-h);
+    font-size: 14px;
+    font-weight: 500;
+
+    text-decoration: none;
+
+    backdrop-filter: blur(8px);
+
+    transition: var(--transition-smooth);
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-soft);
+      border-color: var(--border);
+    }
+
+    .button-icon {
+      width: 18px;
+      height: 18px;
+      opacity: 0.9;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    flex-wrap: wrap;
+    justify-content: center;
+
+    li {
+      flex: 1 1 calc(50% - 12px);
+    }
+
+    a {
+      justify-content: center;
+      width: 100%;
+    }
+  }
+}
+
+/* =========================
+   SPACER
+========================= */
+#spacer {
+  height: 80px;
+  border-top: 1px solid var(--border);
+
+  @media (max-width: 1024px) {
+    height: 40px;
+  }
+}
+
+/* =========================
+   TICKS (DETAILS)
+========================= */
+.ticks {
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: -4.5px;
+    border: 5px solid transparent;
+    opacity: 0.5;
+  }
+
+  &::before {
+    left: 0;
+    border-left-color: var(--border);
+  }
+
+  &::after {
+    right: 0;
+    border-right-color: var(--border);
+  }
+}
+
+/* =========================
+   DARK MODE (AUTO)
+========================= */
+@media (prefers-color-scheme: light) {
+  :root {
+    --glass-bg: rgba(0, 0, 0, 0.03);
+    --glass-border: rgba(0, 0, 0, 0.08);
+  }
+}
