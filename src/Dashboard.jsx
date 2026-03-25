@@ -30,29 +30,15 @@ function Dashboard({ utente }) {
     const nomiMesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
     const listaEmoji = ['💰', '🍕', '🛒', '🚗', '🏠', '📱', '💡', '🎁', '💊', '👕', '✈️', '🎮', '🍺', '⛽', '🐾', '🏋️', '🎬', '🛠️'];
 
-    // --- LOGICA CRIPTAZIONE & FORMATTAZIONE ---
+    // --- LOGICA CRIPTAZIONE ---
     const cripta = (testo) => CryptoJS.AES.encrypt(testo.toString(), utente.uid).toString();
-    
     const decripta = (codice) => {
         try {
             const bytes = CryptoJS.AES.decrypt(codice, utente.uid);
             const testo = bytes.toString(CryptoJS.enc.Utf8);
             return testo || "";
+            // eslint-disable-next-line no-unused-vars
         } catch (e) { return "Errore"; }
-    };
-
-    const formattaEuro = (valore) => {
-        return valore.toLocaleString('it-IT', { 
-            style: 'currency', 
-            currency: 'EUR',
-            minimumFractionDigits: 2 
-        });
-    };
-
-    const formattaInputNumerico = (valore) => {
-        if (!valore) return 0;
-        const pulito = valore.toString().replace(',', '.').trim();
-        return parseFloat(pulito) || 0;
     };
 
     const ottieniEmoji = (stringa) => {
@@ -66,13 +52,13 @@ function Dashboard({ utente }) {
         if (!utente) return;
 
         const unsubSpese = onSnapshot(query(collection(db, 'spese'), where('utenteId', '==', utente.uid), orderBy('dataInserimento', 'desc')), (snapshot) => {
-            let array = [];
+            const array = [];
             snapshot.forEach((d) => {
                 const data = d.data();
                 array.push({
                     id: d.id,
                     ...data,
-                    importo: parseFloat(decripta(data.importo)) || 0,
+                    importo: parseFloat(decripta(data.importo)),
                     descrizione: decripta(data.descrizione),
                     categoria: decripta(data.categoria),
                     frequenza: data.frequenza ? decripta(data.frequenza) : 'VARIABILE',
@@ -83,13 +69,13 @@ function Dashboard({ utente }) {
         });
 
         const unsubEntrate = onSnapshot(query(collection(db, 'entrate'), where('utenteId', '==', utente.uid), orderBy('dataInserimento', 'desc')), (snapshot) => {
-            let array = [];
+            const array = [];
             snapshot.forEach((d) => {
                 const data = d.data();
                 array.push({
                     id: d.id,
                     ...data,
-                    importo: parseFloat(decripta(data.importo)) || 0,
+                    importo: parseFloat(decripta(data.importo)),
                     descrizione: decripta(data.descrizione),
                     categoria: decripta(data.categoria)
                 });
@@ -100,7 +86,7 @@ function Dashboard({ utente }) {
         return () => { unsubSpese(); unsubEntrate(); };
     }, [utente]);
 
-    // --- FILTRO ---
+    // --- FILTRO INTELLIGENTE ---
     const filtraDati = (lista) => lista.filter(item => {
         const dInizio = item.dataInserimento?.toDate() || new Date();
         const mInizio = dInizio.getMonth();
@@ -126,27 +112,17 @@ function Dashboard({ utente }) {
     const totaleEntrate = entrateFiltrate.reduce((acc, s) => acc + (s.importo || 0), 0);
     const risparmio = totaleEntrate - totaleSpese;
 
-    // --- LOGICA 50/30/20 ---
-    const bisogni = speseFiltrate.filter(s => s.frequenza === 'FISSA').reduce((acc, s) => acc + s.importo, 0);
-    const desideri = speseFiltrate.filter(s => s.frequenza === 'VARIABILE').reduce((acc, s) => acc + s.importo, 0);
-    
-    const percBisogni = totaleEntrate > 0 ? (bisogni / totaleEntrate) * 100 : 0;
-    const percDesideri = totaleEntrate > 0 ? (desideri / totaleEntrate) * 100 : 0;
-    const percRisparmio = totaleEntrate > 0 ? (risparmio / totaleEntrate) * 100 : 0;
-
     const tutteLeCategorie = [...new Set(['🍕 Cibo', '🚗 Trasporti', '💡 Bollette', '🎉 Svago', '🛒 Spesa', '🏠 Casa', ...spese.map(s => s.categoria)])];
 
-    // --- SALVATAGGIO ---
+    // --- SALVATAGGIO E AGGIORNAMENTO ---
     const salvaSpesa = async (e) => {
         e.preventDefault();
         setCaricamento(true);
-        
-        const importoPulito = formattaInputNumerico(importo);
         const collezione = tipo === 'ENTRATA' ? 'entrate' : 'spese';
         const categoriaFinale = tipo === 'ENTRATA' ? '💰 Entrata' : (categoria === 'CREA_NUOVA' ? `${emojiSelezionata} ${categoriaPersonalizzata}` : categoria);
 
         const datiDaSalvare = {
-            importo: cripta(importoPulito),
+            importo: cripta(importo),
             descrizione: cripta(descrizione),
             categoria: cripta(categoriaFinale),
             frequenza: cripta(frequenza),
@@ -168,7 +144,7 @@ function Dashboard({ utente }) {
     };
 
     return (
-        <div className="animate-fade-in pb-20 w-full max-w-7xl mx-auto px-4">
+        <div className="animate-fade-in pb-20 w-full">
 
             {/* BANNER PRIVACY DISCRETO */}
             <div className="flex justify-center mb-6">
@@ -178,90 +154,47 @@ function Dashboard({ utente }) {
                 </span>
             </div>
 
-            {/* HEADER TOTALI & COACH 50/30/20 */}
-            <div className="flex flex-col gap-6 mb-12 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800 shadow-xl backdrop-blur-xl">
-                
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                    {/* SELETTORE DATA */}
-                    <div className="flex flex-col gap-2 w-full lg:w-auto">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase ml-2 tracking-widest">Periodo</p>
-                        <div className="flex gap-2 bg-slate-950/50 p-2 rounded-2xl border border-slate-800/50">
-                            <select value={meseSelezionato} onChange={(e) => setMeseSelezionato(e.target.value)} className="bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1">
-                                {nomiMesi.map((m, i) => <option key={i} value={i} className="bg-slate-900">{m}</option>)}
-                            </select>
-                            <div className="w-[1px] bg-slate-800 my-1"></div>
-                            <select value={annoSelezionato} onChange={(e) => setAnnoSelezionato(e.target.value)} className="bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1">
-                                {[2024, 2025, 2026].map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
-                            </select>
-                        </div>
-                    </div>
+            {/* HEADER TOTALI (GLASSMORPHISM) */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
 
-                    {/* TOTALI */}
-                    <div className="flex w-full lg:w-auto gap-4 md:gap-8 justify-between lg:justify-end items-center">
-                        <div className="text-right">
-                            <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Entrate</p>
-                            <h2 className="text-xl font-bold text-emerald-400/90 tracking-tight">{formattaEuro(totaleEntrate)}</h2>
-                        </div>
-                        <div className="hidden sm:block w-[1px] h-10 bg-slate-800"></div>
-                        <div className="text-right">
-                            <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Uscite</p>
-                            <h2 className="text-xl font-bold text-red-400/90 tracking-tight">{formattaEuro(totaleSpese)}</h2>
-                        </div>
-                        <div className="bg-slate-950 p-4 rounded-2xl px-6 border border-slate-800/50 shadow-inner flex flex-col justify-center text-right min-w-[140px]">
-                            <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Netto</p>
-                            <h2 className={`text-2xl font-black tracking-tighter ${risparmio >= 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
-                                {formattaEuro(risparmio)}
-                            </h2>
-                        </div>
+                {/* SELETTORE DATA */}
+                <div className="flex flex-col gap-2 w-full lg:w-auto">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase ml-2 tracking-widest">Seleziona Periodo</p>
+                    <div className="flex gap-2 bg-slate-950/50 p-2 rounded-2xl border border-slate-800/50">
+                        <select value={meseSelezionato} onChange={(e) => setMeseSelezionato(e.target.value)} className="flex-1 lg:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1">
+                            {nomiMesi.map((m, i) => <option key={i} value={i} className="bg-slate-900">{m}</option>)}
+                        </select>
+                        <div className="w-[1px] bg-slate-800 my-1"></div>
+                        <select value={annoSelezionato} onChange={(e) => setAnnoSelezionato(e.target.value)} className="bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1">
+                            {[2024, 2025, 2026].map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
+                        </select>
                     </div>
                 </div>
 
-                {/* --- SEZIONE 50/30/20 --- */}
-                <div className="border-t border-slate-800 pt-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Coach Regola 50/30/20</p>
-                        <span className="text-[9px] text-emerald-500/80 font-medium">Basato sulle entrate mensili</span>
+                {/* TOTALI */}
+                <div className="flex w-full lg:w-auto gap-4 md:gap-8 justify-between lg:justify-end items-center">
+                    <div className="hidden sm:block text-right">
+                        <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Entrate</p>
+                        <h2 className="text-xl font-bold text-emerald-400/90 tracking-tight">€ {totaleEntrate.toFixed(2)}</h2>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-4">
-                        {/* Bisogni (50%) */}
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold uppercase">
-                                <span className="text-slate-300">🏠 Costi Fissi (50%)</span>
-                                <span className={percBisogni > 50 ? 'text-red-400' : 'text-emerald-400'}>{percBisogni.toFixed(0)}%</span>
-                            </div>
-                            <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                                <div className={`h-full transition-all duration-1000 ${percBisogni > 50 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(percBisogni, 100)}%` }}></div>
-                            </div>
-                        </div>
+                    <div className="hidden sm:block w-[1px] h-10 bg-slate-800"></div>
+                    <div className="text-right">
+                        <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Uscite</p>
+                        <h2 className="text-xl font-bold text-red-400/90 tracking-tight">€ {totaleSpese.toFixed(2)}</h2>
+                    </div>
 
-                        {/* Desideri (30%) */}
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold uppercase">
-                                <span className="text-slate-300">🍕 Variabili (30%)</span>
-                                <span className={percDesideri > 30 ? 'text-orange-400' : 'text-emerald-400'}>{percDesideri.toFixed(0)}%</span>
-                            </div>
-                            <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                                <div className={`h-full transition-all duration-1000 ${percDesideri > 30 ? 'bg-orange-500' : 'bg-purple-500'}`} style={{ width: `${Math.min(percDesideri, 100)}%` }}></div>
-                            </div>
-                        </div>
-
-                        {/* Risparmio (20%) */}
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold uppercase">
-                                <span className="text-slate-300">📈 Risparmio (20%)</span>
-                                <span className={percRisparmio < 20 ? 'text-slate-500' : 'text-emerald-400'}>{percRisparmio.toFixed(0)}%</span>
-                            </div>
-                            <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                                <div className={`h-full transition-all duration-1000 ${percRisparmio >= 20 ? 'bg-emerald-500' : 'bg-slate-700'}`} style={{ width: `${Math.max(0, Math.min(percRisparmio, 100))}%` }}></div>
-                            </div>
-                        </div>
+                    {/* RISPARMIO NETTO EVIDENZIATO */}
+                    <div className="bg-slate-950 p-4 rounded-2xl px-6 border border-slate-800/50 shadow-inner flex flex-col justify-center min-w-[140px] text-right">
+                        <p className="text-slate-500 uppercase text-[10px] font-bold tracking-widest mb-1">Risparmio Netto</p>
+                        <h2 className={`text-2xl font-black tracking-tighter ${risparmio >= 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
+                            € {risparmio.toFixed(2)}
+                        </h2>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-                
+
                 {/* COLONNA FORM (STICKY) */}
                 <div className="lg:col-span-5 lg:sticky lg:top-28">
                     <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
@@ -273,11 +206,12 @@ function Dashboard({ utente }) {
                         <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800/50 mb-8 relative">
                             <button type="button" onClick={() => { setTipo('USCITA'); setSpesaInModifica(null); }} className={`flex-1 py-3 rounded-xl font-bold text-[11px] tracking-wider transition-all z-10 ${tipo === 'USCITA' ? 'text-red-400' : 'text-slate-500 hover:text-slate-300'}`}>USCITA</button>
                             <button type="button" onClick={() => { setTipo('ENTRATA'); setSpesaInModifica(null); }} className={`flex-1 py-3 rounded-xl font-bold text-[11px] tracking-wider transition-all z-10 ${tipo === 'ENTRATA' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}>ENTRATA</button>
+                            {/* Sfondo Toggle Animato */}
                             <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-slate-800 rounded-xl transition-all duration-300 ease-out shadow-sm ${tipo === 'USCITA' ? 'left-1.5' : 'left-[50%]'}`}></div>
                         </div>
 
                         <form onSubmit={salvaSpesa} className="flex flex-col gap-5">
-                            
+
                             {/* DATE */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
@@ -295,15 +229,7 @@ function Dashboard({ utente }) {
                             {/* IMPORTO */}
                             <div className="relative">
                                 <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xl">€</span>
-                                <input 
-                                    type="text" 
-                                    inputMode="decimal"
-                                    required 
-                                    value={importo} 
-                                    onChange={(e) => setImporto(e.target.value)} 
-                                    className={`w-full pl-12 p-5 rounded-2xl bg-slate-950 border-none ring-1 ring-slate-800 text-3xl font-black outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${tipo === 'ENTRATA' ? 'text-emerald-400' : 'text-slate-100'}`} 
-                                    placeholder="0,00" 
-                                />
+                                <input type="number" step="0.01" required value={importo} onChange={(e) => setImporto(e.target.value)} className={`w-full pl-12 p-5 rounded-2xl bg-slate-950 border-none ring-1 ring-slate-800 text-3xl font-black outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${tipo === 'ENTRATA' ? 'text-emerald-400' : 'text-slate-100'}`} placeholder="0.00" />
                             </div>
 
                             {/* DESCRIZIONE */}
@@ -311,7 +237,7 @@ function Dashboard({ utente }) {
 
                             {tipo === 'USCITA' && (
                                 <>
-                                    {/* FREQUENZA */}
+                                    {/* FREQUENZA (Pillole) */}
                                     <div className="flex gap-3">
                                         <button type="button" onClick={() => setFrequenza('VARIABILE')} className={`flex-1 py-3 px-4 rounded-2xl text-[11px] font-bold tracking-widest transition-all ring-1 outline-none ${frequenza === 'VARIABILE' ? 'bg-slate-800 text-white ring-slate-600 shadow-md' : 'bg-transparent text-slate-500 ring-slate-800 hover:ring-slate-600'}`}>
                                             ☁️ VARIABILE
@@ -393,7 +319,7 @@ function Dashboard({ utente }) {
 
                                 <div className="flex items-center gap-2 sm:gap-4">
                                     <span className={`whitespace-nowrap font-black text-base sm:text-lg tracking-tight ${s.categoria === '💰 Entrata' ? 'text-emerald-400' : 'text-slate-200'}`}>
-                                        {s.categoria === '💰 Entrata' ? '+ ' : '- '}{formattaEuro(s.importo)}
+                                        {s.categoria === '💰 Entrata' ? '+ ' : '- '}€{s.importo.toFixed(2)}
                                     </span>
 
                                     {/* AZIONI (Modifica / Elimina) */}
@@ -401,12 +327,10 @@ function Dashboard({ utente }) {
                                             opacity-100 translate-x-0 
                                             lg:opacity-0 lg:group-hover:opacity-100 
                                             lg:translate-x-2 lg:group-hover:translate-x-0 
-                                            transition-all duration-300">
-                                        <button onClick={() => {
+                                            transition-all duration-300">                                        <button onClick={() => {
                                             setSpesaInModifica(s.id);
                                             setTipo(s.categoria === '💰 Entrata' ? 'ENTRATA' : 'USCITA');
-                                            setImporto(s.importo.toString().replace('.', ','));
-                                            setDescrizione(s.descrizione); setCategoria(s.categoria);
+                                            setImporto(s.importo); setDescrizione(s.descrizione); setCategoria(s.categoria);
                                             setFrequenza(s.frequenza || 'VARIABILE');
                                             setDataSpesa(s.dataInserimento?.toDate().toISOString().split('T')[0]);
                                             if (s.scadenza) setDataFine(s.scadenza); else setDataFine('');

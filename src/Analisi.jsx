@@ -4,7 +4,7 @@ import CryptoJS from 'crypto-js';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // <-- IMPORT CORRETTO AUTOTABLE
+import autoTable from 'jspdf-autotable';
 
 function Analisi({ utente }) {
     const [spese, setSpese] = useState([]);
@@ -48,7 +48,7 @@ function Analisi({ utente }) {
                     ...data,
                     importo: parseFloat(decripta(data.importo)) || 0,
                     categoria: decripta(data.categoria),
-                    descrizione: decripta(data.descrizione), // ORA DECRIPTA LA DESCRIZIONE
+                    descrizione: decripta(data.descrizione),
                     frequenza: data.frequenza ? decripta(data.frequenza) : 'VARIABILE',
                     scadenza: data.scadenza ? decripta(data.scadenza) : ''
                 });
@@ -65,8 +65,8 @@ function Analisi({ utente }) {
                     id: d.id,
                     ...data, 
                     importo: parseFloat(decripta(data.importo)) || 0,
-                    categoria: decripta(data.categoria),     // ORA DECRIPTA LA CATEGORIA
-                    descrizione: decripta(data.descrizione)  // ORA DECRIPTA LA DESCRIZIONE
+                    categoria: decripta(data.categoria),
+                    descrizione: decripta(data.descrizione)
                 });
             });
             setEntrate(docs);
@@ -106,6 +106,11 @@ function Analisi({ utente }) {
 
     const sFisse = sMeseAttuale.filter(s => s.frequenza === 'FISSA').reduce((a, b) => a + b.importo, 0);
     const sVariabili = sMeseAttuale.filter(s => s.frequenza === 'VARIABILE').reduce((a, b) => a + b.importo, 0);
+
+    // --- CALCOLI COACH 50/30/20 ---
+    const percBisogni = tEntrate > 0 ? (sFisse / tEntrate) * 100 : 0;
+    const percDesideri = tEntrate > 0 ? (sVariabili / tEntrate) * 100 : 0;
+    const percRisparmio = tEntrate > 0 ? (risparmio / tEntrate) * 100 : 0;
 
     const datiAndamentoAnnuale = nomiMesi.map((mese, index) => {
         const speseMese = filtraDati(spese, index, annoSelezionato).reduce((a, b) => a + b.importo, 0);
@@ -177,7 +182,7 @@ function Analisi({ utente }) {
         doc.setDrawColor(226, 232, 240); 
         doc.line(14, 76, 196, 76);
 
-        // 3. Preparazione Dati Tabella (con stringhe decriptate e pulite)
+        // 3. Preparazione Dati Tabella
         const tuttiIMovimenti = [
             ...speseExport.map(s => ({ ...s, tipo: 'Uscita' })),
             ...entrateExport.map(e => ({ ...e, tipo: 'Entrata', frequenza: 'SINGOLA' }))
@@ -207,7 +212,7 @@ function Analisi({ utente }) {
                 1: { halign: 'center', cellWidth: 22 }, 
                 2: { cellWidth: 35 }, 
                 3: { cellWidth: 'auto' }, 
-                4: { halign: 'center', cellWidth: 18 }, // <-- ALLARGATO PER NON ANDARE A CAPO
+                4: { halign: 'center', cellWidth: 18 },
                 5: { halign: 'right', fontStyle: 'bold', cellWidth: 25 } 
             },
             didParseCell: function(data) {
@@ -302,7 +307,7 @@ function Analisi({ utente }) {
             </div>
 
             {/* CARDS TOTALI */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Entrate Totali</p>
                     <h3 className="text-2xl font-black text-emerald-400/90 tracking-tight">€ {tEntrate.toFixed(2)}</h3>
@@ -317,6 +322,57 @@ function Analisi({ utente }) {
                     <h3 className={`text-3xl font-black tracking-tighter relative z-10 ${risparmio >= 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
                         € {risparmio.toFixed(2)}
                     </h3>
+                </div>
+            </div>
+
+            {/* SEZIONE COACH 50/30/20 */}
+            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold text-slate-200 tracking-wide flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">🎯</div>
+                        Coach Finanziario (50/30/20)
+                    </h3>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800">
+                        Budget Mensile
+                    </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                    {/* Bisogni (50%) */}
+                    <div className="space-y-3 bg-slate-950/50 p-5 rounded-3xl border border-slate-800/50 shadow-inner">
+                        <div className="flex justify-between text-xs font-bold uppercase">
+                            <span className="text-slate-400">Bisogni (50%)</span>
+                            <span className={percBisogni > 50 ? 'text-red-400' : 'text-emerald-400'}>{percBisogni.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                            <div className={`h-full transition-all duration-1000 ${percBisogni > 50 ? 'bg-red-500' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'}`} style={{ width: `${Math.min(percBisogni, 100)}%` }}></div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 text-center">Affitto, bollette, spesa</p>
+                    </div>
+
+                    {/* Desideri (30%) */}
+                    <div className="space-y-3 bg-slate-950/50 p-5 rounded-3xl border border-slate-800/50 shadow-inner">
+                        <div className="flex justify-between text-xs font-bold uppercase">
+                            <span className="text-slate-400">Desideri (30%)</span>
+                            <span className={percDesideri > 30 ? 'text-orange-400' : 'text-emerald-400'}>{percDesideri.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                            <div className={`h-full transition-all duration-1000 ${percDesideri > 30 ? 'bg-orange-500' : 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]'}`} style={{ width: `${Math.min(percDesideri, 100)}%` }}></div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 text-center">Svago, cene fuori, hobby</p>
+                    </div>
+
+                    {/* Risparmio (20%) */}
+                    <div className="space-y-3 bg-slate-950/50 p-5 rounded-3xl border border-slate-800/50 shadow-inner">
+                        <div className="flex justify-between text-xs font-bold uppercase">
+                            <span className="text-slate-400">Risparmio (20%)</span>
+                            <span className={percRisparmio < 20 ? 'text-slate-500' : 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.8)]'}>{percRisparmio.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                            <div className={`h-full transition-all duration-1000 ${percRisparmio >= 20 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`} style={{ width: `${Math.max(0, Math.min(percRisparmio, 100))}%` }}></div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 text-center">Investimenti e imprevisti</p>
+                    </div>
                 </div>
             </div>
 
