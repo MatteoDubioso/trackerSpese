@@ -108,6 +108,10 @@ function Analisi({ utente }) {
     const sVariabili = sMeseAttuale.filter(s => s.frequenza === 'VARIABILE').reduce((a, b) => a + b.importo, 0);
 
     // --- CALCOLI COACH 50/30/20 ---
+    const targetBisogni = tEntrate * 0.50;
+    const targetDesideri = tEntrate * 0.30;
+    const targetRisparmio = tEntrate * 0.20;
+
     const percBisogni = tEntrate > 0 ? (sFisse / tEntrate) * 100 : 0;
     const percDesideri = tEntrate > 0 ? (sVariabili / tEntrate) * 100 : 0;
     const percRisparmio = tEntrate > 0 ? (risparmio / tEntrate) * 100 : 0;
@@ -281,53 +285,9 @@ function Analisi({ utente }) {
                 </div>
             </div>
 
-            {/* RIEPILOGO FISSE / VARIABILI */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-slate-900/40 p-6 rounded-[2rem] border-y border-r border-l-4 border-l-blue-500 border-slate-800/60 shadow-lg flex justify-between items-center backdrop-blur-sm hover:bg-slate-900/60 transition-colors">
-                    <div>
-                        <p className="text-blue-400/90 text-[10px] font-black uppercase tracking-widest mb-1 flex items-center gap-1.5"><span className="text-sm">📌</span> Costi Fissi</p>
-                        <h4 className="text-2xl font-black text-slate-100 tracking-tight">€ {sFisse.toFixed(2)}</h4>
-                    </div>
-                    <div className="text-right bg-slate-950/50 px-4 py-2 rounded-xl border border-slate-800/50 shadow-inner">
-                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-0.5">Incidenza</p>
-                        <p className="text-blue-400 font-black text-lg">{tEntrate > 0 ? ((sFisse / tEntrate) * 100).toFixed(0) : 0}%</p>
-                    </div>
-                </div>
-                
-                <div className="bg-slate-900/40 p-6 rounded-[2rem] border-y border-r border-l-4 border-l-orange-500 border-slate-800/60 shadow-lg flex justify-between items-center backdrop-blur-sm hover:bg-slate-900/60 transition-colors">
-                    <div>
-                        <p className="text-orange-400/90 text-[10px] font-black uppercase tracking-widest mb-1 flex items-center gap-1.5"><span className="text-sm">☁️</span> Costi Variabili</p>
-                        <h4 className="text-2xl font-black text-slate-100 tracking-tight">€ {sVariabili.toFixed(2)}</h4>
-                    </div>
-                    <div className="text-right bg-slate-950/50 px-4 py-2 rounded-xl border border-slate-800/50 shadow-inner">
-                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-0.5">Incidenza</p>
-                        <p className="text-orange-400 font-black text-lg">{tEntrate > 0 ? ((sVariabili / tEntrate) * 100).toFixed(0) : 0}%</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* CARDS TOTALI */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Entrate Totali</p>
-                    <h3 className="text-2xl font-black text-emerald-400/90 tracking-tight">€ {tEntrate.toFixed(2)}</h3>
-                </div>
-                <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Uscite Totali</p>
-                    <h3 className="text-2xl font-black text-red-400/90 tracking-tight">€ {tUscite.toFixed(2)}</h3>
-                </div>
-                <div className="bg-slate-950 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner flex flex-col justify-center text-center relative overflow-hidden">
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1 relative z-10">Risparmio Netto</p>
-                    <h3 className={`text-3xl font-black tracking-tighter relative z-10 ${risparmio >= 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
-                        € {risparmio.toFixed(2)}
-                    </h3>
-                </div>
-            </div>
-
             {/* SEZIONE COACH 50/30/20 */}
             <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-8">
                     <h3 className="text-lg font-bold text-slate-200 tracking-wide flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">🎯</div>
                         Coach Finanziario (50/30/20)
@@ -339,40 +299,92 @@ function Analisi({ utente }) {
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
                     {/* Bisogni (50%) */}
-                    <div className="space-y-3 bg-slate-950/50 p-5 rounded-3xl border border-slate-800/50 shadow-inner">
-                        <div className="flex justify-between text-xs font-bold uppercase">
-                            <span className="text-slate-400">Bisogni (50%)</span>
-                            <span className={percBisogni > 50 ? 'text-red-400' : 'text-emerald-400'}>{percBisogni.toFixed(1)}%</span>
+                    <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner relative overflow-hidden">
+                        <div className="flex justify-between items-end mb-3">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Obiettivo (50%)</span>
+                                <span className="text-slate-300 font-black text-lg">€ {targetBisogni.toFixed(2)}</span>
+                            </div>
+                            <div className="flex flex-col text-right">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Spesa Attuale</span>
+                                <span className={`font-black text-lg ${sFisse > targetBisogni ? 'text-red-400' : 'text-blue-400'}`}>
+                                    € {sFisse.toFixed(2)}
+                                </span>
+                            </div>
                         </div>
-                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800 mb-2">
                             <div className={`h-full transition-all duration-1000 ${percBisogni > 50 ? 'bg-red-500' : 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]'}`} style={{ width: `${Math.min(percBisogni, 100)}%` }}></div>
                         </div>
-                        <p className="text-[10px] text-slate-500 text-center">Affitto, bollette, spesa</p>
+                        <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Affitto, bollette, spesa base</span>
+                            <span className="font-bold">{percBisogni.toFixed(1)}%</span>
+                        </div>
                     </div>
 
                     {/* Desideri (30%) */}
-                    <div className="space-y-3 bg-slate-950/50 p-5 rounded-3xl border border-slate-800/50 shadow-inner">
-                        <div className="flex justify-between text-xs font-bold uppercase">
-                            <span className="text-slate-400">Desideri (30%)</span>
-                            <span className={percDesideri > 30 ? 'text-orange-400' : 'text-emerald-400'}>{percDesideri.toFixed(1)}%</span>
+                    <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner relative overflow-hidden">
+                        <div className="flex justify-between items-end mb-3">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Obiettivo (30%)</span>
+                                <span className="text-slate-300 font-black text-lg">€ {targetDesideri.toFixed(2)}</span>
+                            </div>
+                            <div className="flex flex-col text-right">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Spesa Attuale</span>
+                                <span className={`font-black text-lg ${sVariabili > targetDesideri ? 'text-red-400' : 'text-purple-400'}`}>
+                                    € {sVariabili.toFixed(2)}
+                                </span>
+                            </div>
                         </div>
-                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                            <div className={`h-full transition-all duration-1000 ${percDesideri > 30 ? 'bg-orange-500' : 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]'}`} style={{ width: `${Math.min(percDesideri, 100)}%` }}></div>
+                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800 mb-2">
+                            <div className={`h-full transition-all duration-1000 ${percDesideri > 30 ? 'bg-red-500' : 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]'}`} style={{ width: `${Math.min(percDesideri, 100)}%` }}></div>
                         </div>
-                        <p className="text-[10px] text-slate-500 text-center">Svago, cene fuori, hobby</p>
+                        <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Svago, cene fuori, hobby</span>
+                            <span className="font-bold">{percDesideri.toFixed(1)}%</span>
+                        </div>
                     </div>
 
                     {/* Risparmio (20%) */}
-                    <div className="space-y-3 bg-slate-950/50 p-5 rounded-3xl border border-slate-800/50 shadow-inner">
-                        <div className="flex justify-between text-xs font-bold uppercase">
-                            <span className="text-slate-400">Risparmio (20%)</span>
-                            <span className={percRisparmio < 20 ? 'text-slate-500' : 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.8)]'}>{percRisparmio.toFixed(1)}%</span>
+                    <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner relative overflow-hidden">
+                        <div className="flex justify-between items-end mb-3">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Da mettere via (20%)</span>
+                                <span className="text-slate-300 font-black text-lg">€ {targetRisparmio.toFixed(2)}</span>
+                            </div>
+                            <div className="flex flex-col text-right">
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Risparmiato</span>
+                                <span className={`font-black text-lg ${risparmio < targetRisparmio ? 'text-orange-400' : 'text-emerald-400'}`}>
+                                    € {risparmio.toFixed(2)}
+                                </span>
+                            </div>
                         </div>
-                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                            <div className={`h-full transition-all duration-1000 ${percRisparmio >= 20 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`} style={{ width: `${Math.max(0, Math.min(percRisparmio, 100))}%` }}></div>
+                        <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800 mb-2">
+                            <div className={`h-full transition-all duration-1000 ${percRisparmio >= 20 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-orange-500'}`} style={{ width: `${Math.max(0, Math.min(percRisparmio, 100))}%` }}></div>
                         </div>
-                        <p className="text-[10px] text-slate-500 text-center">Investimenti e imprevisti</p>
+                        <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Investimenti e imprevisti</span>
+                            <span className="font-bold">{percRisparmio.toFixed(1)}%</span>
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            {/* CARDS TOTALI */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Entrate Totali</p>
+                    <h3 className="text-2xl font-black text-emerald-400/90 tracking-tight">€ {tEntrate.toFixed(2)}</h3>
+                </div>
+                <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Uscite Totali</p>
+                    <h3 className="text-2xl font-black text-red-400/90 tracking-tight">€ {tUscite.toFixed(2)}</h3>
+                </div>
+                <div className="bg-slate-950 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner flex flex-col justify-center text-center relative overflow-hidden">
+                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1 relative z-10">Risparmio Netto Mensile</p>
+                    <h3 className={`text-3xl font-black tracking-tighter relative z-10 ${risparmio >= 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
+                        € {risparmio.toFixed(2)}
+                    </h3>
                 </div>
             </div>
 
