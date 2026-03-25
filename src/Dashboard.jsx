@@ -323,8 +323,11 @@ function Dashboard({ utente }) {
                                     </span>
 
                                     {/* AZIONI (Modifica / Elimina) */}
-                                    <div className="flex bg-slate-950 border border-slate-800 rounded-xl overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
-                                        <button onClick={() => {
+                                    <div className="flex bg-slate-950 border border-slate-800 rounded-xl overflow-hidden 
+                                            opacity-100 translate-x-0 
+                                            lg:opacity-0 lg:group-hover:opacity-100 
+                                            lg:translate-x-2 lg:group-hover:translate-x-0 
+                                            transition-all duration-300">                                        <button onClick={() => {
                                             setSpesaInModifica(s.id);
                                             setTipo(s.categoria === '💰 Entrata' ? 'ENTRATA' : 'USCITA');
                                             setImporto(s.importo); setDescrizione(s.descrizione); setCategoria(s.categoria);

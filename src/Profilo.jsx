@@ -1,10 +1,36 @@
 import { auth } from './firebase';
-import { signOut } from 'firebase/auth';
+import { signOut, deleteUser } from 'firebase/auth';
 
 function Profilo({ utente }) {
+    
+    // --- LOGICA LOGOUT ---
     const logout = () => {
         if(window.confirm("Sei sicuro di voler uscire?")) {
             signOut(auth);
+        }
+    };
+
+    // --- LOGICA ELIMINAZIONE ACCOUNT ---
+    const eliminaAccount = async () => {
+        const conferma = window.confirm(
+            "⚠️ ATTENZIONE: Sei sicuro di voler ELIMINARE definitivamente il tuo account?\n\nQuesta azione non può essere annullata. Perderai l'accesso alla piattaforma."
+        );
+
+        if (conferma) {
+            try {
+                // currentUser è l'oggetto utente attualmente loggato in Firebase Auth
+                await deleteUser(auth.currentUser);
+                // Se ha successo, Firebase fa scattare in automatico il logout e App.jsx ti riporterà alla Home
+            } catch (error) {
+                console.error("Errore durante l'eliminazione dell'account:", error);
+                
+                // Gestione sicurezza di Firebase: richiede un login recente per azioni distruttive
+                if (error.code === 'auth/requires-recent-login') {
+                    alert("🔒 Per motivi di sicurezza, devi disconnetterti e accedere di nuovo prima di poter eliminare definitivamente il tuo account.");
+                } else {
+                    alert("❌ Si è verificato un errore. Riprova più tardi.");
+                }
+            }
         }
     };
 
@@ -19,11 +45,11 @@ function Profilo({ utente }) {
 
             <div className="relative bg-slate-900/60 p-8 md:p-12 rounded-[2.5rem] border border-slate-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl flex flex-col items-center">
                 
-                {/* SFONDO GLOW INTERNO (Opzionale per dare profondità) */}
+                {/* SFONDO GLOW INTERNO */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                 {/* FOTO PROFILO */}
-                <div className="relative mb-6 group">
+                <div className="relative mb-6 group z-10">
                     <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-slate-900 ring-2 ring-emerald-500/50 shadow-[0_0_30px_rgba(52,211,153,0.2)] transition-transform duration-300 group-hover:scale-105 bg-slate-800 flex items-center justify-center">
                         {utente.photoURL ? (
                             <img src={utente.photoURL} alt="Profilo" className="w-full h-full object-cover" />
@@ -56,7 +82,7 @@ function Profilo({ utente }) {
                     </div>
                     
                     <div className="bg-slate-950/50 p-5 rounded-3xl border border-slate-800/60 shadow-inner hover:bg-slate-900/50 transition-colors">
-                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Accesso tramite</p>
+                        <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Accesso</p>
                         <div className="flex items-center gap-2">
                             <span className="text-lg leading-none">
                                 {utente.providerData[0]?.providerId === 'google.com' ? '🔵' : '✉️'}
@@ -68,13 +94,26 @@ function Profilo({ utente }) {
                     </div>
                 </div>
 
-                {/* PULSANTE LOGOUT */}
-                <button 
-                    onClick={logout}
-                    className="w-full max-w-md bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 py-4 rounded-2xl font-bold tracking-widest uppercase text-sm transition-all shadow-lg active:scale-[0.98] z-10"
-                >
-                    Disconnetti Account
-                </button>
+                {/* AREA PULSANTI DI GESTIONE */}
+                <div className="w-full max-w-md flex flex-col gap-3 z-10">
+                    
+                    {/* Pulsante Logout */}
+                    <button 
+                        onClick={logout}
+                        className="w-full bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 hover:border-slate-600 py-4 rounded-2xl font-bold tracking-widest uppercase text-sm transition-all shadow-lg active:scale-[0.98]"
+                    >
+                        Disconnetti Account
+                    </button>
+
+                    {/* Pulsante Eliminazione (Più discreto ma pericoloso) */}
+                    <button 
+                        onClick={eliminaAccount}
+                        className="w-full bg-transparent hover:bg-red-500/10 text-slate-500 hover:text-red-400 border border-transparent hover:border-red-500/30 py-4 rounded-2xl font-bold tracking-widest uppercase text-xs transition-all active:scale-[0.98]"
+                    >
+                        Elimina Account Definitivamente
+                    </button>
+
+                </div>
                 
                 {/* FOOTER VERSIONE */}
                 <div className="mt-10 flex flex-col items-center gap-2 z-10">
