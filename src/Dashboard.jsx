@@ -284,45 +284,45 @@ function Dashboard({ utente }) {
                 </div>
 
                 {/* COLONNA LISTA */}
-                <div className="lg:col-span-7 space-y-4 mt-8 lg:mt-0">
-                    <div className="flex items-center justify-between px-2 mb-6">
-                        <h3 className="text-lg font-bold text-slate-200 tracking-wide">Movimenti di {nomiMesi[meseSelezionato]}</h3>
-                        <span className="text-xs font-bold text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">{speseFiltrate.length + entrateFiltrate.length} elementi</span>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                        {[...speseFiltrate, ...entrateFiltrate].sort((a, b) => b.dataInserimento?.toDate() - a.dataInserimento?.toDate()).map(s => (
-                            <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/40 rounded-[1.5rem] border border-slate-800/60 group hover:border-slate-700 hover:bg-slate-900/60 transition-all backdrop-blur-sm shadow-sm">
-
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 flex items-center justify-center bg-slate-950 rounded-[1.2rem] text-2xl border border-slate-800/50 shadow-inner group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300">
-                                        {ottieniEmoji(s.categoria)}
+                                <div className="lg:col-span-7 space-y-4 mt-8 lg:mt-0">
+                                    <div className="flex items-center justify-between px-2 mb-6">
+                                        <h3 className="text-lg font-bold text-slate-200 tracking-wide">Movimenti di {nomiMesi[meseSelezionato]}</h3>
+                                        <span className="text-xs font-bold text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">{speseFiltrate.length + entrateFiltrate.length} elementi</span>
                                     </div>
-                                    <div className="flex flex-col gap-1">
-                                        <h4 className="font-bold text-slate-200 text-sm md:text-base leading-tight capitalize truncate max-w-[150px] sm:max-w-[200px]">{s.descrizione}</h4>
-                                        <div className="flex flex-wrap items-center gap-1.5 text-[9px] sm:text-[10px] font-bold tracking-widest uppercase">
-                                            <span className="text-slate-500">{s.categoria}</span>
-                                            <span className="text-slate-700">•</span>
-                                            <span className="text-slate-400">{s.dataInserimento?.toDate().toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span>
 
-                                            {s.frequenza === 'FISSA' && (
-                                                <>
-                                                    <span className="text-slate-700 hidden sm:inline">•</span>
-                                                    <span className="text-blue-400/80 bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20">
-                                                        {s.scadenza ? `Fino al ${new Date(s.scadenza).toLocaleDateString('it-IT', { month: 'short', year: '2-digit' })}` : '📌 Fissa'}
+                                    <div className="flex flex-col gap-3">
+                                        {[...speseFiltrate, ...entrateFiltrate].sort((a, b) => b.dataInserimento?.toDate() - a.dataInserimento?.toDate()).map(s => (
+                                            <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/40 rounded-[1.5rem] border border-slate-800/60 group hover:border-slate-700 hover:bg-slate-900/60 transition-all backdrop-blur-sm shadow-sm">
+
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-14 h-14 flex items-center justify-center bg-slate-950 rounded-[1.2rem] text-2xl border border-slate-800/50 shadow-inner group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300">
+                                                        {ottieniEmoji(s.categoria)}
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <h4 className="font-bold text-slate-200 text-sm md:text-base leading-tight capitalize truncate max-w-[150px] sm:max-w-[200px]">{s.descrizione}</h4>
+                                                        <div className="flex flex-wrap items-center gap-1.5 text-[8px] xs:text-[9px] sm:text-[10px] font-bold tracking-widest uppercase">
+                                                            <span className="text-slate-500">{s.categoria}</span>
+                                                            <span className="text-slate-700">•</span>
+                                                            <span className="text-slate-400">{s.dataInserimento?.toDate().toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</span>
+
+                                                            {s.frequenza === 'FISSA' && (
+                                                                <>
+                                                                    <span className="text-slate-700 hidden sm:inline">•</span>
+                                                                    <span className="text-blue-400/80 bg-blue-500/10 px-1.5 py-0.5 rounded-md border border-blue-500/20 text-[7px] xs:text-[8px] sm:text-[9px] leading-tight">
+                                                                        {s.scadenza ? `Fino al ${new Date(s.scadenza).toLocaleDateString('it-IT', { month: 'short', year: '2-digit' })}` : '📌 Fissa'}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 sm:gap-4">
+                                                    <span className={`whitespace-nowrap font-black text-base sm:text-lg tracking-tight ${s.categoria === '💰 Entrata' ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                                        {s.categoria === '💰 Entrata' ? '+ ' : '- '}€{s.importo.toFixed(2)}
                                                     </span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="flex items-center gap-2 sm:gap-4">
-                                    <span className={`whitespace-nowrap font-black text-base sm:text-lg tracking-tight ${s.categoria === '💰 Entrata' ? 'text-emerald-400' : 'text-slate-200'}`}>
-                                        {s.categoria === '💰 Entrata' ? '+ ' : '- '}€{s.importo.toFixed(2)}
-                                    </span>
-
-                                    {/* AZIONI (Modifica / Elimina) */}
+                                                    {/* AZIONI (Modifica / Elimina) */}
                                     <div className="flex bg-slate-950 border border-slate-800 rounded-xl overflow-hidden 
                                             opacity-100 translate-x-0 
                                             lg:opacity-0 lg:group-hover:opacity-100 
