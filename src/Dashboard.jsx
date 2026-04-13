@@ -247,7 +247,7 @@ function Dashboard({ utente }) {
                         </div>
                         <div className="hidden md:block w-[1px] h-10 bg-slate-800"></div>
                         <div className="text-right">
-                            <p className="text-blue-400/80 uppercase text-[10px] font-bold tracking-widest mb-1 flex items-center justify-end gap-1"><span className="text-xs">🐷</span> Accantonato</p>
+                            <p className="text-blue-400/80 uppercase text-[10px] font-bold tracking-widest mb-1 flex items-center justify-end gap-1"><span className="text-xs"></span> Accantonato</p>
                             <h2 className="text-lg md:text-xl font-bold text-blue-400 tracking-tight">{formattaEuro(totaleRisparmi)}</h2>
                         </div>
                         <div className="col-span-2 md:col-span-1 bg-slate-950 p-4 rounded-2xl px-6 border border-slate-800/50 shadow-inner flex flex-col justify-center text-right min-w-[140px] mt-2 md:mt-0">
