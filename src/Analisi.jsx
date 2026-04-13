@@ -9,13 +9,16 @@ import autoTable from 'jspdf-autotable';
 function Analisi({ utente }) {
     const [spese, setSpese] = useState([]);
     const [entrate, setEntrate] = useState([]);
+    const [risparmi, setRisparmi] = useState([]); // NUOVO STATO RISPARMI
 
     const [meseSelezionato, setMeseSelezionato] = useState(new Date().getMonth());
     const [annoSelezionato, setAnnoSelezionato] = useState(new Date().getFullYear());
 
     const nomiMesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
     const nomiMesiEstesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-    const COLORI = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    
+    // Colori per il grafico a torta
+    const COLORI = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#6366f1'];
 
     // --- LOGICA DECRIPTAZIONE ---
     const decripta = (codice) => {
@@ -38,14 +41,12 @@ function Analisi({ utente }) {
     useEffect(() => {
         if (!utente) return;
 
-        // SCARICA E DECRIPTA LE SPESE
         const unsubS = onSnapshot(query(collection(db, 'spese'), where('utenteId', '==', utente.uid)), (snap) => {
             let docs = [];
             snap.forEach(d => {
                 const data = d.data();
                 docs.push({
-                    id: d.id,
-                    ...data,
+                    id: d.id, ...data,
                     importo: parseFloat(decripta(data.importo)) || 0,
                     categoria: decripta(data.categoria),
                     descrizione: decripta(data.descrizione),
@@ -56,14 +57,12 @@ function Analisi({ utente }) {
             setSpese(docs);
         });
 
-        // SCARICA E DECRIPTA LE ENTRATE
         const unsubE = onSnapshot(query(collection(db, 'entrate'), where('utenteId', '==', utente.uid)), (snap) => {
             let docs = [];
             snap.forEach(d => {
                 const data = d.data();
                 docs.push({ 
-                    id: d.id,
-                    ...data, 
+                    id: d.id, ...data, 
                     importo: parseFloat(decripta(data.importo)) || 0,
                     categoria: decripta(data.categoria),
                     descrizione: decripta(data.descrizione)
@@ -72,7 +71,23 @@ function Analisi({ utente }) {
             setEntrate(docs);
         });
 
-        return () => { unsubS(); unsubE(); };
+        const unsubR = onSnapshot(query(collection(db, 'risparmi'), where('utenteId', '==', utente.uid)), (snap) => {
+            let docs = [];
+            snap.forEach(d => {
+                const data = d.data();
+                docs.push({
+                    id: d.id, ...data,
+                    importo: parseFloat(decripta(data.importo)) || 0,
+                    categoria: decripta(data.categoria),
+                    descrizione: decripta(data.descrizione),
+                    frequenza: data.frequenza ? decripta(data.frequenza) : 'VARIABILE',
+                    scadenza: data.scadenza ? decripta(data.scadenza) : ''
+                });
+            });
+            setRisparmi(docs);
+        });
+
+        return () => { unsubS(); unsubE(); unsubR(); };
     }, [utente]);
 
     // --- LOGICA FILTRI ---
@@ -99,10 +114,13 @@ function Analisi({ utente }) {
 
     const sMeseAttuale = filtraDati(spese, meseSelezionato, annoSelezionato);
     const eMeseAttuale = filtraDati(entrate, meseSelezionato, annoSelezionato);
+    const rMeseAttuale = filtraDati(risparmi, meseSelezionato, annoSelezionato);
 
     const tUscite = sMeseAttuale.reduce((a, b) => a + b.importo, 0);
     const tEntrate = eMeseAttuale.reduce((a, b) => a + b.importo, 0);
-    const risparmio = tEntrate - tUscite;
+    const tRisparmi = rMeseAttuale.reduce((a, b) => a + b.importo, 0);
+    
+    const liquidita = tEntrate - tUscite - tRisparmi;
 
     const sFisse = sMeseAttuale.filter(s => s.frequenza === 'FISSA').reduce((a, b) => a + b.importo, 0);
     const sVariabili = sMeseAttuale.filter(s => s.frequenza === 'VARIABILE').reduce((a, b) => a + b.importo, 0);
@@ -114,18 +132,21 @@ function Analisi({ utente }) {
 
     const percBisogni = tEntrate > 0 ? (sFisse / tEntrate) * 100 : 0;
     const percDesideri = tEntrate > 0 ? (sVariabili / tEntrate) * 100 : 0;
-    const percRisparmio = tEntrate > 0 ? (risparmio / tEntrate) * 100 : 0;
+    const percRisparmio = tEntrate > 0 ? (tRisparmi / tEntrate) * 100 : 0;
 
+    // --- DATI GRAFICI ---
     const datiAndamentoAnnuale = nomiMesi.map((mese, index) => {
         const speseMese = filtraDati(spese, index, annoSelezionato).reduce((a, b) => a + b.importo, 0);
         const entrateMese = filtraDati(entrate, index, annoSelezionato).reduce((a, b) => a + b.importo, 0);
-        return { name: mese, Uscite: speseMese, Entrate: entrateMese };
+        const risparmiMese = filtraDati(risparmi, index, annoSelezionato).reduce((a, b) => a + b.importo, 0);
+        return { name: mese, Uscite: speseMese, Entrate: entrateMese, Risparmi: risparmiMese };
     });
 
-    const chartDataTorta = Object.entries(sMeseAttuale.reduce((acc, curr) => {
+    const movimentiPerTorta = [...sMeseAttuale, ...rMeseAttuale];
+    const chartDataTorta = Object.entries(movimentiPerTorta.reduce((acc, curr) => {
         acc[curr.categoria] = (acc[curr.categoria] || 0) + curr.importo;
         return acc;
-    }, {})).map(([name, value]) => ({ name, value }));
+    }, {})).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
     // --- FUNZIONE GENERAZIONE PDF PREMIUM ---
     const generaPDF = (tipoReport) => {
@@ -134,15 +155,16 @@ function Analisi({ utente }) {
         
         const speseExport = filtraDati(spese, meseSelezionato, annoSelezionato, isAnnuale);
         const entrateExport = filtraDati(entrate, meseSelezionato, annoSelezionato, isAnnuale);
+        const risparmiExport = filtraDati(risparmi, meseSelezionato, annoSelezionato, isAnnuale);
 
         const totaleE = entrateExport.reduce((a, b) => a + b.importo, 0);
         const totaleU = speseExport.reduce((a, b) => a + b.importo, 0);
-        const netto = totaleE - totaleU;
+        const totaleR = risparmiExport.reduce((a, b) => a + b.importo, 0);
+        const netto = totaleE - totaleU - totaleR;
 
-        // 1. Intestazione Scura
+        // 1. Intestazione
         doc.setFillColor(15, 23, 42); 
         doc.rect(0, 0, 210, 40, 'F'); 
-
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(22);
@@ -154,7 +176,7 @@ function Analisi({ utente }) {
         const periodo = isAnnuale ? `Report Annuale: ${annoSelezionato}` : `Report Mensile: ${nomiMesiEstesi[meseSelezionato]} ${annoSelezionato}`;
         doc.text(periodo, 14, 28);
 
-        // 2. Sezione Riepilogo Totali
+        // 2. Riepilogo Finanziario
         doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
@@ -162,34 +184,38 @@ function Analisi({ utente }) {
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
+        
         doc.setTextColor(100, 116, 139);
-
         doc.text("Entrate Totali:", 14, 62);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(16, 185, 129); 
-        doc.text(`+ € ${totaleE.toFixed(2)}`, 14, 68);
+        doc.setTextColor(16, 185, 129); doc.text(`+ € ${totaleE.toFixed(2)}`, 14, 68);
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 116, 139);
-        doc.text("Uscite Totali:", 75, 62);
+        doc.text("Uscite Totali:", 65, 62);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(239, 68, 68); 
-        doc.text(`- € ${totaleU.toFixed(2)}`, 75, 68);
+        doc.setTextColor(239, 68, 68); doc.text(`- € ${totaleU.toFixed(2)}`, 65, 68);
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 116, 139);
-        doc.text("Risparmio Netto:", 135, 62);
+        doc.text("Risparmio:", 115, 62);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(netto >= 0 ? 16 : 239, netto >= 0 ? 185 : 68, netto >= 0 ? 129 : 68);
-        doc.text(`€ ${netto.toFixed(2)}`, 135, 68);
+        doc.setTextColor(59, 130, 246); doc.text(`↓ € ${totaleR.toFixed(2)}`, 115, 68);
 
-        doc.setDrawColor(226, 232, 240); 
-        doc.line(14, 76, 196, 76);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text("Liquidità Netta:", 165, 62);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(netto >= 0 ? 15 : 239, netto >= 0 ? 23 : 68, netto >= 0 ? 42 : 68);
+        doc.text(`€ ${netto.toFixed(2)}`, 165, 68);
+
+        doc.setDrawColor(226, 232, 240); doc.line(14, 76, 196, 76);
 
         // 3. Preparazione Dati Tabella
         const tuttiIMovimenti = [
             ...speseExport.map(s => ({ ...s, tipo: 'Uscita' })),
-            ...entrateExport.map(e => ({ ...e, tipo: 'Entrata', frequenza: 'SINGOLA' }))
+            ...entrateExport.map(e => ({ ...e, tipo: 'Entrata', frequenza: 'SINGOLA' })),
+            ...risparmiExport.map(r => ({ ...r, tipo: 'Risparmio' }))
         ].sort((a, b) => b.dataInserimento?.toDate() - a.dataInserimento?.toDate());
 
         const colonneTabella = ["Data", "Tipo", "Categoria", "Descrizione", "Freq.", "Importo"];
@@ -212,20 +238,15 @@ function Analisi({ utente }) {
             alternateRowStyles: { fillColor: [248, 250, 252] }, 
             styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, textColor: [51, 65, 85] },
             columnStyles: {
-                0: { halign: 'center', cellWidth: 26 }, 
-                1: { halign: 'center', cellWidth: 22 }, 
-                2: { cellWidth: 35 }, 
-                3: { cellWidth: 'auto' }, 
-                4: { halign: 'center', cellWidth: 18 },
+                0: { halign: 'center', cellWidth: 26 }, 1: { halign: 'center', cellWidth: 22 }, 
+                2: { cellWidth: 35 }, 3: { cellWidth: 'auto' }, 4: { halign: 'center', cellWidth: 18 },
                 5: { halign: 'right', fontStyle: 'bold', cellWidth: 25 } 
             },
             didParseCell: function(data) {
                 if (data.section === 'body' && data.column.index === 5) {
-                    if (data.row.raw[1] === 'Entrata') {
-                        data.cell.styles.textColor = [16, 185, 129];
-                    } else {
-                        data.cell.styles.textColor = [239, 68, 68];
-                    }
+                    if (data.row.raw[1] === 'Entrata') data.cell.styles.textColor = [16, 185, 129];
+                    else if (data.row.raw[1] === 'Risparmio') data.cell.styles.textColor = [59, 130, 246];
+                    else data.cell.styles.textColor = [239, 68, 68];
                 }
             }
         });
@@ -233,29 +254,20 @@ function Analisi({ utente }) {
         // 5. Piè di pagina
         const pageCount = doc.internal.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(148, 163, 184); 
-            doc.text(
-                `Generato da TrackerSpese il ${new Date().toLocaleDateString('it-IT')} - Pagina ${i} di ${pageCount}`, 
-                14, 
-                285 
-            );
+            doc.setPage(i); doc.setFontSize(8); doc.setTextColor(148, 163, 184); 
+            doc.text(`Generato da TrackerSpese il ${new Date().toLocaleDateString('it-IT')} - Pagina ${i} di ${pageCount}`, 14, 285);
         }
 
         // 6. Download
-        const nomeFile = isAnnuale 
-            ? `Report_TrackerSpese_${annoSelezionato}.pdf` 
-            : `Report_TrackerSpese_${nomiMesiEstesi[meseSelezionato]}_${annoSelezionato}.pdf`;
-            
+        const nomeFile = isAnnuale ? `Report_${annoSelezionato}.pdf` : `Report_${nomiMesiEstesi[meseSelezionato]}_${annoSelezionato}.pdf`;
         doc.save(nomeFile);
     };
 
     return (
-        <div className="animate-fade-in pb-20 w-full max-w-7xl mx-auto">
+        <div className="animate-fade-in pb-20 w-full max-w-7xl mx-auto px-4">
             
-            {/* HEADER CON BOTTONI PDF */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
+            {/* HEADER CON BOTTONI PDF E SELETTORE DATA */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800/60 shadow-xl backdrop-blur-xl">
                 <div>
                     <h2 className="text-2xl font-black text-slate-100 tracking-tight">Analisi Finanziaria</h2>
                     <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Esporta in PDF</p>
@@ -270,15 +282,13 @@ function Analisi({ utente }) {
                             <span className="text-lg group-hover:-translate-y-0.5 transition-transform">📘</span> Anno
                         </button>
                     </div>
-
                     <div className="hidden md:block w-[1px] h-8 bg-slate-800 mx-2"></div>
-
                     <div className="flex gap-2 bg-slate-950/50 p-2 rounded-2xl border border-slate-800/50 w-full md:w-auto">
-                        <select value={meseSelezionato} onChange={(e) => setMeseSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 appearance-none text-center">
+                        <select value={meseSelezionato} onChange={(e) => setMeseSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 text-center">
                             {nomiMesiEstesi.map((m, i) => <option key={i} value={i} className="bg-slate-900">{m}</option>)}
                         </select>
                         <div className="w-[1px] bg-slate-800 my-1"></div>
-                        <select value={annoSelezionato} onChange={(e) => setAnnoSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 appearance-none text-center">
+                        <select value={annoSelezionato} onChange={(e) => setAnnoSelezionato(e.target.value)} className="flex-1 md:w-auto bg-transparent border-none text-emerald-400 font-bold outline-none cursor-pointer p-1 text-center">
                             {[2024, 2025, 2026].map(a => <option key={a} value={a} className="bg-slate-900">{a}</option>)}
                         </select>
                     </div>
@@ -286,15 +296,13 @@ function Analisi({ utente }) {
             </div>
 
             {/* SEZIONE COACH 50/30/20 */}
-            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
+            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-xl backdrop-blur-xl">
                 <div className="flex justify-between items-center mb-8">
                     <h3 className="text-lg font-bold text-slate-200 tracking-wide flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">🎯</div>
                         Coach Finanziario (50/30/20)
                     </h3>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800">
-                        Budget Mensile
-                    </span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800">Budget Mensile</span>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
@@ -306,10 +314,8 @@ function Analisi({ utente }) {
                                 <span className="text-slate-300 font-black text-lg">€ {targetBisogni.toFixed(2)}</span>
                             </div>
                             <div className="flex flex-col text-right">
-                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Spesa Attuale</span>
-                                <span className={`font-black text-lg ${sFisse > targetBisogni ? 'text-red-400' : 'text-blue-400'}`}>
-                                    € {sFisse.toFixed(2)}
-                                </span>
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Spesa Fissa</span>
+                                <span className={`font-black text-lg ${sFisse > targetBisogni ? 'text-red-400' : 'text-blue-400'}`}>€ {sFisse.toFixed(2)}</span>
                             </div>
                         </div>
                         <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800 mb-2">
@@ -329,10 +335,8 @@ function Analisi({ utente }) {
                                 <span className="text-slate-300 font-black text-lg">€ {targetDesideri.toFixed(2)}</span>
                             </div>
                             <div className="flex flex-col text-right">
-                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Spesa Attuale</span>
-                                <span className={`font-black text-lg ${sVariabili > targetDesideri ? 'text-red-400' : 'text-purple-400'}`}>
-                                    € {sVariabili.toFixed(2)}
-                                </span>
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Spesa Variabile</span>
+                                <span className={`font-black text-lg ${sVariabili > targetDesideri ? 'text-red-400' : 'text-purple-400'}`}>€ {sVariabili.toFixed(2)}</span>
                             </div>
                         </div>
                         <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800 mb-2">
@@ -344,52 +348,54 @@ function Analisi({ utente }) {
                         </div>
                     </div>
 
-                    {/* Risparmio (20%) */}
+                    {/* Risparmio (20%) - ORA CALCOLATO SULLA COLLEZIONE RISPARMI */}
                     <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner relative overflow-hidden">
                         <div className="flex justify-between items-end mb-3">
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Da mettere via (20%)</span>
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Obiettivo (20%)</span>
                                 <span className="text-slate-300 font-black text-lg">€ {targetRisparmio.toFixed(2)}</span>
                             </div>
                             <div className="flex flex-col text-right">
-                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Risparmiato</span>
-                                <span className={`font-black text-lg ${risparmio < targetRisparmio ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                    € {risparmio.toFixed(2)}
-                                </span>
+                                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-0.5">Accantonato</span>
+                                <span className={`font-black text-lg ${tRisparmi < targetRisparmio ? 'text-orange-400' : 'text-emerald-400'}`}>€ {tRisparmi.toFixed(2)}</span>
                             </div>
                         </div>
                         <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800 mb-2">
                             <div className={`h-full transition-all duration-1000 ${percRisparmio >= 20 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-orange-500'}`} style={{ width: `${Math.max(0, Math.min(percRisparmio, 100))}%` }}></div>
                         </div>
                         <div className="flex justify-between text-[10px] text-slate-500">
-                            <span>Investimenti e imprevisti</span>
+                            <span>Soldi messi al sicuro</span>
                             <span className="font-bold">{percRisparmio.toFixed(1)}%</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* CARDS TOTALI */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
+            {/* CARDS 4 TOTALI (Inclusi Risparmi) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
+                <div className="bg-slate-900/40 p-5 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Entrate Totali</p>
-                    <h3 className="text-2xl font-black text-emerald-400/90 tracking-tight">€ {tEntrate.toFixed(2)}</h3>
+                    <h3 className="text-xl md:text-2xl font-black text-emerald-400/90 tracking-tight">€ {tEntrate.toFixed(2)}</h3>
                 </div>
-                <div className="bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
+                <div className="bg-slate-900/40 p-5 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Uscite Totali</p>
-                    <h3 className="text-2xl font-black text-red-400/90 tracking-tight">€ {tUscite.toFixed(2)}</h3>
+                    <h3 className="text-xl md:text-2xl font-black text-red-400/90 tracking-tight">€ {tUscite.toFixed(2)}</h3>
                 </div>
-                <div className="bg-slate-950 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner flex flex-col justify-center text-center relative overflow-hidden">
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1 relative z-10">Risparmio Netto Mensile</p>
-                    <h3 className={`text-3xl font-black tracking-tighter relative z-10 ${risparmio >= 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
-                        € {risparmio.toFixed(2)}
+                <div className="bg-slate-900/40 p-5 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1 flex justify-center items-center gap-1"><span className="text-xs">🐷</span> Accantonato</p>
+                    <h3 className="text-xl md:text-2xl font-black text-blue-400/90 tracking-tight">€ {tRisparmi.toFixed(2)}</h3>
+                </div>
+                <div className="bg-slate-950 p-5 rounded-[2rem] border border-slate-800/50 shadow-inner flex flex-col justify-center text-center relative overflow-hidden">
+                    <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1 relative z-10">Liquidità Rimasta</p>
+                    <h3 className={`text-xl md:text-2xl font-black tracking-tighter relative z-10 ${liquidita >= 0 ? 'text-slate-100' : 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.3)]'}`}>
+                        € {liquidita.toFixed(2)}
                     </h3>
                 </div>
             </div>
 
-            {/* GRAFICO ANDAMENTO ANNUALE */}
-            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
+            {/* GRAFICO ANDAMENTO ANNUALE (Con Barra Risparmi) */}
+            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-xl backdrop-blur-xl">
                 <div className="flex items-center gap-3 mb-8">
                     <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30">📊</div>
                     <h3 className="text-lg font-bold text-slate-200 tracking-wide">Andamento Annuale {annoSelezionato}</h3>
@@ -405,19 +411,21 @@ function Analisi({ utente }) {
                                 contentStyle={{ backgroundColor: '#020617', borderRadius: '16px', border: '1px solid #1e293b', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
                                 itemStyle={{ fontWeight: 'bold' }}
                             />
-                            <Bar dataKey="Entrate" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                            <Bar dataKey="Uscite" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                            {/* ORA CI SONO 3 BARRE! */}
+                            <Bar dataKey="Entrate" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                            <Bar dataKey="Uscite" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                            <Bar dataKey="Risparmi" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
             {/* DISTRIBUZIONE CATEGORIE */}
-            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
+            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 shadow-xl backdrop-blur-xl">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30">🍕</div>
-                        <h3 className="text-lg font-bold text-slate-200 tracking-wide">Distribuzione Categorie</h3>
+                        <h3 className="text-lg font-bold text-slate-200 tracking-wide">Distribuzione (Uscite + Risparmi)</h3>
                     </div>
                 </div>
                 
@@ -451,7 +459,7 @@ function Analisi({ utente }) {
                 ) : (
                     <div className="flex flex-col items-center justify-center h-64 bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
                         <span className="text-4xl mb-3 opacity-30">📉</span>
-                        <p className="text-slate-500 font-medium text-sm">Nessuna spesa registrata</p>
+                        <p className="text-slate-500 font-medium text-sm">Nessuna spesa/risparmio registrato</p>
                     </div>
                 )}
             </div>
