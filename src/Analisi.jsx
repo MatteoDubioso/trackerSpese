@@ -382,7 +382,7 @@ function Analisi({ utente }) {
                     <h3 className="text-xl md:text-2xl font-black text-red-400/90 tracking-tight">€ {tUscite.toFixed(2)}</h3>
                 </div>
                 <div className="bg-slate-900/40 p-5 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1 flex justify-center items-center gap-1"><span className="text-xs">🐷</span> Accantonato</p>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1 flex justify-center items-center gap-1"><span className="text-xs"></span> Accantonato</p>
                     <h3 className="text-xl md:text-2xl font-black text-blue-400/90 tracking-tight">€ {tRisparmi.toFixed(2)}</h3>
                 </div>
                 <div className="bg-slate-950 p-5 rounded-[2rem] border border-slate-800/50 shadow-inner flex flex-col justify-center text-center relative overflow-hidden">
