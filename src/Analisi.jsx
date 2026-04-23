@@ -49,11 +49,11 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
     };
 
     try {
-        const res = await fetch('/api/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'COACH', payload: datiMese })
-        });
+        const res = await fetch('/api/gemini', { // Assicurati che non ci siano domini fissi tipo http://localhost...
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'COACH', payload: datiMese })
+});
         const data = await res.json();
         setMessaggioCoach(data.result);
     } catch (err) {
