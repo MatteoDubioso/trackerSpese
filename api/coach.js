@@ -28,7 +28,7 @@ export default async function handler(req, res) {
         console.log("🔑 [API COACH] API Key trovata. Inizia con:", apiKey.substring(0, 5) + "...");
     }
 
-const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
     const prompt = `Agisci come un coach finanziario esperto. Analizza questi dati del mese dell'utente: ${JSON.stringify(payload)}. 
     Dai un consiglio motivazionale o correttivo basato sulla regola 50/30/20. 
