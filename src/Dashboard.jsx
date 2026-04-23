@@ -56,7 +56,7 @@ const compilaConAI = async () => {
     if(!testoNaturale) return;
     setCaricamentoAI(true);
     try {
-        const res = await fetch('/api/gemini', {
+        const res = await fetch('/api/coach.js', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'PARSE_EXPENSE', payload: testoNaturale })

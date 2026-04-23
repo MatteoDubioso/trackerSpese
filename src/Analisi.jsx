@@ -49,7 +49,7 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
     };
 
     try {
-        const res = await fetch('/api/coach.js', { // Assicurati che non ci siano domini fissi tipo http://localhost...
+        const res = await fetch('/api/coach', { // Assicurati che non ci siano domini fissi tipo http://localhost...
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'COACH', payload: datiMese })
