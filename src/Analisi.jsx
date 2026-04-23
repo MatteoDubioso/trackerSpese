@@ -10,7 +10,8 @@ function Analisi({ utente }) {
     const [spese, setSpese] = useState([]);
     const [entrate, setEntrate] = useState([]);
     const [risparmi, setRisparmi] = useState([]); // NUOVO STATO RISPARMI
-
+const [messaggioCoach, setMessaggioCoach] = useState('');
+const [caricamentoCoach, setCaricamentoCoach] = useState(false);
     const [meseSelezionato, setMeseSelezionato] = useState(new Date().getMonth());
     const [annoSelezionato, setAnnoSelezionato] = useState(new Date().getFullYear());
 
@@ -36,6 +37,31 @@ function Analisi({ utente }) {
         if (!stringa) return '';
         return stringa.replace(/(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g, '').trim();
     };
+
+    const chiediAlCoach = async () => {
+    setCaricamentoCoach(true);
+    // Prepariamo i dati decriptati da mandare all'AI
+    const datiMese = {
+        entrateTotali: tEntrate,
+        speseFisse: sFisse,
+        speseVariabili: sVariabili,
+        risparmioAccantonato: tRisparmi
+    };
+
+    try {
+        const res = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'COACH', payload: datiMese })
+        });
+        const data = await res.json();
+        setMessaggioCoach(data.result);
+    } catch (err) {
+        setMessaggioCoach("Il coach è in pausa caffè, riprova più tardi!");
+    } finally {
+        setCaricamentoCoach(false);
+    }
+};
 
     // --- CARICAMENTO DATI ---
     useEffect(() => {
@@ -294,7 +320,28 @@ function Analisi({ utente }) {
                     </div>
                 </div>
             </div>
-
+{/* MESSAGGIO DEL COACH AI */}
+<div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-emerald-500/30 mb-10 shadow-[0_0_30px_rgba(16,185,129,0.15)] backdrop-blur-xl relative overflow-hidden">
+    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+        <h3 className="text-lg font-bold text-slate-200 tracking-wide flex items-center gap-3">
+            <span className="text-2xl">🤖</span> Il tuo Coach AI
+        </h3>
+        <button onClick={chiediAlCoach} disabled={caricamentoCoach} className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all border border-emerald-500/30 active:scale-95 w-full sm:w-auto text-center shadow-lg">
+            {caricamentoCoach ? 'Analisi in corso...' : 'Chiedi un parere'}
+        </button>
+    </div>
+    
+    {messaggioCoach ? (
+        <p className="text-slate-300 text-sm md:text-base leading-relaxed italic animate-fade-in border-l-4 border-emerald-500 pl-4 py-3 bg-slate-950/40 rounded-r-2xl shadow-inner whitespace-pre-wrap">
+            "{messaggioCoach}"
+        </p>
+    ) : (
+        <p className="text-slate-500 text-sm bg-slate-950/30 p-4 rounded-2xl border border-dashed border-slate-800">
+            Clicca il pulsante per far analizzare le spese di {nomiMesiEstesi[meseSelezionato]} dalla mia Intelligenza Artificiale e ricevere un consiglio personalizzato.
+        </p>
+    )}
+</div>
             {/* SEZIONE COACH 50/30/20 */}
             <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-xl backdrop-blur-xl">
                 <div className="flex justify-between items-center mb-8">

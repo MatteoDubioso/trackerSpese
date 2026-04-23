@@ -18,7 +18,8 @@ function Dashboard({ utente }) {
     const [dataSpesa, setDataSpesa] = useState(new Date().toISOString().split('T')[0]);
     const [dataFine, setDataFine] = useState('');
     const [caricamento, setCaricamento] = useState(false);
-
+const [testoNaturale, setTestoNaturale] = useState('');
+const [caricamentoAI, setCaricamentoAI] = useState(false);
     // --- STATI DATI ---
     const [spese, setSpese] = useState([]);
     const [entrate, setEntrate] = useState([]);
@@ -50,6 +51,31 @@ function Dashboard({ utente }) {
             minimumFractionDigits: 2 
         });
     };
+
+const compilaConAI = async () => {
+    if(!testoNaturale) return;
+    setCaricamentoAI(true);
+    try {
+        const res = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'PARSE_EXPENSE', payload: testoNaturale })
+        });
+        const data = await res.json();
+        const info = JSON.parse(data.result); // Trasforma il testo in oggetto Javascript
+
+        // Autocompila i campi del form!
+        setTipo(info.tipo);
+        setImporto(info.importo.toString().replace('.', ','));
+        setDescrizione(info.descrizione);
+        setCategoria(info.categoria);
+        setTestoNaturale(''); // Pulisce la barra
+    } catch (err) {
+        alert("Ops, l'AI non ha capito bene la frase!");
+    } finally {
+        setCaricamentoAI(false);
+    }
+};
 
     const formattaInputNumerico = (valore) => {
         if (!valore) return 0;
@@ -259,9 +285,31 @@ function Dashboard({ utente }) {
                     </div>
                 </div>
             </div>
-
+  {/* MAGIC INPUT AI */}
+<div className="bg-slate-900/60 p-6 rounded-[2rem] border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.1)] backdrop-blur-xl mb-6 relative overflow-hidden">
+    <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl"></div>
+    <h3 className="text-xs font-bold text-emerald-400 mb-3 flex items-center gap-2 uppercase tracking-widest">
+        <span>✨</span> Inserimento Magico
+    </h3>
+    <div className="flex gap-3">
+        <input
+            type="text"
+            value={testoNaturale}
+            onChange={(e) => setTestoNaturale(e.target.value)}
+            placeholder="Es. 'Ho speso 15€ per la pizza'"
+            className="flex-1 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 outline-none focus:border-emerald-500/50 transition-all text-sm"
+            onKeyDown={(e) => e.key === 'Enter' && compilaConAI()}
+        />
+        <button
+            onClick={compilaConAI}
+            disabled={caricamentoAI || !testoNaturale}
+            className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold px-5 rounded-xl transition-all shadow-lg active:scale-95"
+        >
+            {caricamentoAI ? '⏳...' : 'Genera'}
+        </button>
+    </div>
+</div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-                
                 {/* COLONNA FORM (STICKY) */}
                 <div className="lg:col-span-5 lg:sticky lg:top-28">
                     <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-xl">
