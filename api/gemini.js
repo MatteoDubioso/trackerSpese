@@ -15,7 +15,7 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Configurazione mancante: GEMINI_API_KEY non trovata su Vercel.' });
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
     const prompt = `Sei l'assistente di un'app di finanza. L'utente ha scritto: "${payload}".
     Estrai i dati e restituisci SOLO un JSON valido (senza markdown o altri testi) con questa esatta struttura:
