@@ -70,6 +70,7 @@ const compilaConAI = async () => {
         setDescrizione(info.descrizione);
         setCategoria(info.categoria);
         setTestoNaturale(''); // Pulisce la barra
+    // eslint-disable-next-line no-unused-vars
     } catch (err) {
         alert("Ops, l'AI non ha capito bene la frase!");
     } finally {

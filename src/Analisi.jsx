@@ -9,19 +9,23 @@ import autoTable from 'jspdf-autotable';
 function Analisi({ utente }) {
     const [spese, setSpese] = useState([]);
     const [entrate, setEntrate] = useState([]);
-    const [risparmi, setRisparmi] = useState([]); // NUOVO STATO RISPARMI
-const [messaggioCoach, setMessaggioCoach] = useState('');
-const [caricamentoCoach, setCaricamentoCoach] = useState(false);
+    const [risparmi, setRisparmi] = useState([]); 
+    
+    // STATO ISCLIENT PER I GRAFICI
+    const [isClient, setIsClient] = useState(false);
+
+    // STATI COACH AI
+    const [messaggioCoach, setMessaggioCoach] = useState('');
+    const [caricamentoCoach, setCaricamentoCoach] = useState(false);
+    
     const [meseSelezionato, setMeseSelezionato] = useState(new Date().getMonth());
     const [annoSelezionato, setAnnoSelezionato] = useState(new Date().getFullYear());
 
     const nomiMesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
     const nomiMesiEstesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
     
-    // Colori per il grafico a torta
     const COLORI = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#6366f1'];
 
-    // --- LOGICA DECRIPTAZIONE ---
     const decripta = (codice) => {
         if (!codice) return "";
         try {
@@ -32,38 +36,16 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
         } catch (error) { return "Errore"; }
     };
 
-    // --- RIMOZIONE EMOJI PER PDF ---
     const rimuoviEmoji = (stringa) => {
         if (!stringa) return '';
         return stringa.replace(/(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g, '').trim();
     };
 
-    const chiediAlCoach = async () => {
-    setCaricamentoCoach(true);
-    // Prepariamo i dati decriptati da mandare all'AI
-    const datiMese = {
-        entrateTotali: tEntrate,
-        speseFisse: sFisse,
-        speseVariabili: sVariabili,
-        risparmioAccantonato: tRisparmi
-    };
+    useEffect(() => {
+        const timer = setTimeout(() => setIsClient(true), 50); // Piccolo ritardo extra per far finire le animazioni CSS
+        return () => clearTimeout(timer);
+    }, []);
 
-    try {
-        const res = await fetch('/api/coach', { // Assicurati che non ci siano domini fissi tipo http://localhost...
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'COACH', payload: datiMese })
-});
-        const data = await res.json();
-        setMessaggioCoach(data.result);
-    } catch (err) {
-        setMessaggioCoach("Il coach è in pausa caffè, riprova più tardi!");
-    } finally {
-        setCaricamentoCoach(false);
-    }
-};
-
-    // --- CARICAMENTO DATI ---
     useEffect(() => {
         if (!utente) return;
 
@@ -116,7 +98,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
         return () => { unsubS(); unsubE(); unsubR(); };
     }, [utente]);
 
-    // --- LOGICA FILTRI ---
     const filtraDati = (lista, m, a, soloAnno = false) => lista.filter(item => {
         const dataItem = item.dataInserimento?.toDate() || new Date();
         const meseItem = dataItem.getMonth();
@@ -151,7 +132,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
     const sFisse = sMeseAttuale.filter(s => s.frequenza === 'FISSA').reduce((a, b) => a + b.importo, 0);
     const sVariabili = sMeseAttuale.filter(s => s.frequenza === 'VARIABILE').reduce((a, b) => a + b.importo, 0);
 
-    // --- CALCOLI COACH 50/30/20 ---
     const targetBisogni = tEntrate * 0.50;
     const targetDesideri = tEntrate * 0.30;
     const targetRisparmio = tEntrate * 0.20;
@@ -160,7 +140,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
     const percDesideri = tEntrate > 0 ? (sVariabili / tEntrate) * 100 : 0;
     const percRisparmio = tEntrate > 0 ? (tRisparmi / tEntrate) * 100 : 0;
 
-    // --- DATI GRAFICI ---
     const datiAndamentoAnnuale = nomiMesi.map((mese, index) => {
         const speseMese = filtraDati(spese, index, annoSelezionato).reduce((a, b) => a + b.importo, 0);
         const entrateMese = filtraDati(entrate, index, annoSelezionato).reduce((a, b) => a + b.importo, 0);
@@ -174,7 +153,31 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
         return acc;
     }, {})).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-    // --- FUNZIONE GENERAZIONE PDF PREMIUM ---
+    const chiediAlCoach = async () => {
+        setCaricamentoCoach(true);
+        const datiMese = {
+            entrateTotali: tEntrate,
+            speseFisse: sFisse,
+            speseVariabili: sVariabili,
+            risparmioAccantonato: tRisparmi
+        };
+
+        try {
+            const res = await fetch('/api/coach', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'COACH', payload: datiMese })
+            });
+            const data = await res.json();
+            setMessaggioCoach(data.result);
+        // eslint-disable-next-line no-unused-vars
+        } catch (err) {
+            setMessaggioCoach("Il coach è in pausa caffè, riprova più tardi!");
+        } finally {
+            setCaricamentoCoach(false);
+        }
+    };
+
     const generaPDF = (tipoReport) => {
         const doc = new jsPDF();
         const isAnnuale = tipoReport === 'ANNO';
@@ -188,7 +191,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
         const totaleR = risparmiExport.reduce((a, b) => a + b.importo, 0);
         const netto = totaleE - totaleU - totaleR;
 
-        // 1. Intestazione
         doc.setFillColor(15, 23, 42); 
         doc.rect(0, 0, 210, 40, 'F'); 
         doc.setTextColor(255, 255, 255);
@@ -202,7 +204,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
         const periodo = isAnnuale ? `Report Annuale: ${annoSelezionato}` : `Report Mensile: ${nomiMesiEstesi[meseSelezionato]} ${annoSelezionato}`;
         doc.text(periodo, 14, 28);
 
-        // 2. Riepilogo Finanziario
         doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
@@ -237,7 +238,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
 
         doc.setDrawColor(226, 232, 240); doc.line(14, 76, 196, 76);
 
-        // 3. Preparazione Dati Tabella
         const tuttiIMovimenti = [
             ...speseExport.map(s => ({ ...s, tipo: 'Uscita' })),
             ...entrateExport.map(e => ({ ...e, tipo: 'Entrata', frequenza: 'SINGOLA' })),
@@ -254,7 +254,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
             `€ ${m.importo.toFixed(2)}`
         ]);
 
-        // 4. Tabella Automatica
         autoTable(doc, {
             startY: 84,
             head: [colonneTabella],
@@ -277,14 +276,12 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
             }
         });
 
-        // 5. Piè di pagina
         const pageCount = doc.internal.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i); doc.setFontSize(8); doc.setTextColor(148, 163, 184); 
             doc.text(`Generato da TrackerSpese il ${new Date().toLocaleDateString('it-IT')} - Pagina ${i} di ${pageCount}`, 14, 285);
         }
 
-        // 6. Download
         const nomeFile = isAnnuale ? `Report_${annoSelezionato}.pdf` : `Report_${nomiMesiEstesi[meseSelezionato]}_${annoSelezionato}.pdf`;
         doc.save(nomeFile);
     };
@@ -292,7 +289,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
     return (
         <div className="animate-fade-in pb-20 w-full max-w-7xl mx-auto px-4">
             
-            {/* HEADER CON BOTTONI PDF E SELETTORE DATA */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10 bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-slate-800/60 shadow-xl backdrop-blur-xl">
                 <div>
                     <h2 className="text-2xl font-black text-slate-100 tracking-tight">Analisi Finanziaria</h2>
@@ -320,29 +316,29 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
                     </div>
                 </div>
             </div>
-{/* MESSAGGIO DEL COACH AI */}
-<div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-emerald-500/30 mb-10 shadow-[0_0_30px_rgba(16,185,129,0.15)] backdrop-blur-xl relative overflow-hidden">
-    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-        <h3 className="text-lg font-bold text-slate-200 tracking-wide flex items-center gap-3">
-            <span className="text-2xl">🤖</span> Il tuo Coach AI
-        </h3>
-        <button onClick={chiediAlCoach} disabled={caricamentoCoach} className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all border border-emerald-500/30 active:scale-95 w-full sm:w-auto text-center shadow-lg">
-            {caricamentoCoach ? 'Analisi in corso...' : 'Chiedi un parere'}
-        </button>
-    </div>
-    
-    {messaggioCoach ? (
-        <p className="text-slate-300 text-sm md:text-base leading-relaxed italic animate-fade-in border-l-4 border-emerald-500 pl-4 py-3 bg-slate-950/40 rounded-r-2xl shadow-inner whitespace-pre-wrap">
-            "{messaggioCoach}"
-        </p>
-    ) : (
-        <p className="text-slate-500 text-sm bg-slate-950/30 p-4 rounded-2xl border border-dashed border-slate-800">
-            Clicca il pulsante per far analizzare le spese di {nomiMesiEstesi[meseSelezionato]} dalla mia Intelligenza Artificiale e ricevere un consiglio personalizzato.
-        </p>
-    )}
-</div>
-            {/* SEZIONE COACH 50/30/20 */}
+
+            <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-emerald-500/30 mb-10 shadow-[0_0_30px_rgba(16,185,129,0.15)] backdrop-blur-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
+                    <h3 className="text-lg font-bold text-slate-200 tracking-wide flex items-center gap-3">
+                        <span className="text-2xl">🤖</span> Il tuo Coach AI
+                    </h3>
+                    <button onClick={chiediAlCoach} disabled={caricamentoCoach} className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all border border-emerald-500/30 active:scale-95 w-full sm:w-auto text-center shadow-lg">
+                        {caricamentoCoach ? 'Analisi in corso...' : 'Chiedi un parere'}
+                    </button>
+                </div>
+                
+                {messaggioCoach ? (
+                    <p className="text-slate-300 text-sm md:text-base leading-relaxed italic animate-fade-in border-l-4 border-emerald-500 pl-4 py-3 bg-slate-950/40 rounded-r-2xl shadow-inner whitespace-pre-wrap">
+                        "{messaggioCoach}"
+                    </p>
+                ) : (
+                    <p className="text-slate-500 text-sm bg-slate-950/30 p-4 rounded-2xl border border-dashed border-slate-800">
+                        Clicca il pulsante per far analizzare le spese di {nomiMesiEstesi[meseSelezionato]} dalla mia Intelligenza Artificiale e ricevere un consiglio personalizzato.
+                    </p>
+                )}
+            </div>
+
             <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-xl backdrop-blur-xl">
                 <div className="flex justify-between items-center mb-8">
                     <h3 className="text-lg font-bold text-slate-200 tracking-wide flex items-center gap-3">
@@ -353,7 +349,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-                    {/* Bisogni (50%) */}
                     <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner relative overflow-hidden">
                         <div className="flex justify-between items-end mb-3">
                             <div className="flex flex-col">
@@ -374,7 +369,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
                         </div>
                     </div>
 
-                    {/* Desideri (30%) */}
                     <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner relative overflow-hidden">
                         <div className="flex justify-between items-end mb-3">
                             <div className="flex flex-col">
@@ -395,7 +389,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
                         </div>
                     </div>
 
-                    {/* Risparmio (20%) - ORA CALCOLATO SULLA COLLEZIONE RISPARMI */}
                     <div className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 shadow-inner relative overflow-hidden">
                         <div className="flex justify-between items-end mb-3">
                             <div className="flex flex-col">
@@ -418,7 +411,6 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
                 </div>
             </div>
 
-            {/* CARDS 4 TOTALI (Inclusi Risparmi) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-12">
                 <div className="bg-slate-900/40 p-5 rounded-[2rem] border border-slate-800/60 shadow-lg flex flex-col justify-center text-center backdrop-blur-sm">
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Entrate Totali</p>
@@ -441,33 +433,34 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
                 </div>
             </div>
 
-            {/* GRAFICO ANDAMENTO ANNUALE (Con Barra Risparmi) */}
+            {/* GRAFICO ANDAMENTO ANNUALE - FIX RECHARTS APPLICATO */}
             <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 mb-10 shadow-xl backdrop-blur-xl">
                 <div className="flex items-center gap-3 mb-8">
                     <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30">📊</div>
                     <h3 className="text-lg font-bold text-slate-200 tracking-wide">Andamento Annuale {annoSelezionato}</h3>
                 </div>
-                <div className="h-80 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={datiAndamentoAnnuale} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(val) => `€${val}`} />
-                            <Tooltip
-                                cursor={{ fill: '#1e293b', opacity: 0.4 }}
-                                contentStyle={{ backgroundColor: '#020617', borderRadius: '16px', border: '1px solid #1e293b', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
-                                itemStyle={{ fontWeight: 'bold' }}
-                            />
-                            {/* ORA CI SONO 3 BARRE! */}
-                            <Bar dataKey="Entrate" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                            <Bar dataKey="Uscite" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                            <Bar dataKey="Risparmi" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div style={{ width: '100%', height: 320 }}>
+                    {isClient && (
+                        <ResponsiveContainer width="99%" height={320}>
+                            <BarChart data={datiAndamentoAnnuale} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(val) => `€${val}`} />
+                                <Tooltip
+                                    cursor={{ fill: '#1e293b', opacity: 0.4 }}
+                                    contentStyle={{ backgroundColor: '#020617', borderRadius: '16px', border: '1px solid #1e293b', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                                    itemStyle={{ fontWeight: 'bold' }}
+                                />
+                                <Bar dataKey="Entrate" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                                <Bar dataKey="Uscite" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                                <Bar dataKey="Risparmi" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
             </div>
 
-            {/* DISTRIBUZIONE CATEGORIE */}
+            {/* DISTRIBUZIONE CATEGORIE - FIX RECHARTS APPLICATO */}
             <div className="bg-slate-900/60 p-6 md:p-8 rounded-[2.5rem] border border-slate-800/60 shadow-xl backdrop-blur-xl">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
@@ -477,34 +470,36 @@ const [caricamentoCoach, setCaricamentoCoach] = useState(false);
                 </div>
                 
                 {chartDataTorta.length > 0 ? (
-                    <div className="h-80 w-full flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie 
-                                    data={chartDataTorta} 
-                                    innerRadius={75} 
-                                    outerRadius={105} 
-                                    paddingAngle={6} 
-                                    dataKey="value"
-                                    stroke="none"
-                                >
-                                    {chartDataTorta.map((e, i) => <Cell key={i} fill={COLORI[i % COLORI.length]} style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.3))' }} />)}
-                                </Pie>
-                                <Tooltip 
-                                    contentStyle={{ backgroundColor: '#020617', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
-                                    itemStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
-                                    formatter={(value) => `€ ${value.toFixed(2)}`}
-                                />
-                                <Legend 
-                                    iconType="circle" 
-                                    verticalAlign="bottom" 
-                                    wrapperStyle={{ paddingTop: '20px', fontSize: '12px', color: '#cbd5e1', fontWeight: 600 }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <div style={{ width: '100%', height: 320 }}>
+                        {isClient && (
+                            <ResponsiveContainer width="99%" height={320}>
+                                <PieChart>
+                                    <Pie 
+                                        data={chartDataTorta} 
+                                        innerRadius={75} 
+                                        outerRadius={105} 
+                                        paddingAngle={6} 
+                                        dataKey="value"
+                                        stroke="none"
+                                    >
+                                        {chartDataTorta.map((e, i) => <Cell key={i} fill={COLORI[i % COLORI.length]} style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.3))' }} />)}
+                                    </Pie>
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#020617', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                                        itemStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
+                                        formatter={(value) => `€ ${value.toFixed(2)}`}
+                                    />
+                                    <Legend 
+                                        iconType="circle" 
+                                        verticalAlign="bottom" 
+                                        wrapperStyle={{ paddingTop: '20px', fontSize: '12px', color: '#cbd5e1', fontWeight: 600 }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-64 bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
+                    <div className="flex flex-col items-center justify-center h-[320px] bg-slate-950/30 rounded-3xl border border-dashed border-slate-800">
                         <span className="text-4xl mb-3 opacity-30">📉</span>
                         <p className="text-slate-500 font-medium text-sm">Nessuna spesa/risparmio registrato</p>
                     </div>
